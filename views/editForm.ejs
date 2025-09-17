@@ -1,0 +1,39 @@
+<h1>Edit Booking</h1>
+<form action="/edit/<%= booking.id %>" method="POST" enctype="multipart/form-data">
+  <label>Requester</label>
+  <input type="text" name="requester" value="<%= booking.requester %>" required><br>
+
+  <label>Email</label>
+  <input type="email" name="email" value="<%= booking.email %>" required><br>
+
+  <label>Type of Use</label>
+  <select name="type_of_use">
+    <option <%= booking.type_of_use==="Swimming"?"selected":"" %>>Swimming</option>
+    <option <%= booking.type_of_use==="Training"?"selected":"" %>>Training</option>
+    <option <%= booking.type_of_use==="Other"?"selected":"" %>>Other</option>
+  </select>
+  <input type="text" name="type_of_use_other" placeholder="If Other" value=""><br>
+
+  <label>Participants</label>
+  <input type="number" name="participants" value="<%= booking.participants %>"><br>
+
+  <label>Supervisors</label>
+  <input type="number" name="supervisors" value="<%= booking.supervisors %>"><br>
+
+  <label>Date</label>
+  <input type="date" name="date" value="<%= booking.date %>" required><br>
+
+  <label>Start Time</label>
+  <input type="time" name="start_time" value="<%= booking.start_time %>" required><br>
+
+  <label>Finish Time</label>
+  <input type="time" name="finish_time" value="<%= booking.finish_time %>" required><br>
+
+  <label>Risk Assessment File (optional)</label>
+  <input type="file" name="risk_file"><br>
+
+  <label>Additional Notes</label>
+  <textarea name="notes"><%= booking.notes %></textarea><br>
+
+  <button type="submit">Resubmit for Approval</button>
+</form>

@@ -1,0 +1,70 @@
+<%- include('partials/navbar') %>
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pool Usage Calendar</title>
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <h1>Pool Usage Calendar (Approved Bookings)</h1>
+  <% if (bookings.length > 0) { %>
+    <table border="1" cellpadding="5" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Type of Use</th>
+          <th>Booked by</th>
+          <th>Participants</th>
+          <th>Equipment / Notes</th>
+          <th>Approved At</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% 
+          // helper to format time into 12h AM/PM
+          function formatTime(t) {
+            if (!t) return "";
+            let d = new Date("1970-01-01T" + t);
+            let hours = d.getHours();
+            let minutes = d.getMinutes().toString().padStart(2, "0");
+            let ampm = hours >= 12 ? "PM" : "AM";
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 0 → 12
+            return `${hours}:${minutes} ${ampm}`;
+          }
+
+          // helper to format approved_at datetime
+          function formatApprovedAt(dt) {
+            if (!dt) return "";
+            let d = new Date(dt);
+            let day = d.getDate().toString().padStart(2, "0");
+            let month = (d.getMonth() + 1).toString().padStart(2, "0");
+            let year = d.getFullYear();
+            let hours = d.getHours();
+            let minutes = d.getMinutes().toString().padStart(2, "0");
+            let ampm = hours >= 12 ? "PM" : "AM";
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
+          }
+        %>
+        <% bookings.forEach(b => { %>
+          <tr>
+            <td><%= b.date %></td>
+            <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
+            <td><%= b.type_of_use %></td>
+            <td><%= b.requester %></td>
+            <td><%= b.participants %></td>
+            <td><%= b.equipment %> / <%= b.notes %></td>
+            <td><%= formatApprovedAt(b.approved_at) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <p>No approved bookings yet.</p>
+  <% } %>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Booking</title>
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <%- include('partials/navbar') %>
+
+  <div class="container">
+    <h1>Edit Your Booking</h1>
+
+    <form action="/edit-booking/<%= booking.id %>" method="POST" enctype="multipart/form-data">
+      <label>Name:</label>
+      <input type="text" name="requester" value="<%= booking.requester %>" required>
+
+      <label>Email:</label>
+      <input type="email" name="email" value="<%= booking.email %>" required>
+
+      <label>Type of Use:</label>
+      <select name="type_of_use" required>
+        <option value="Training" <%= booking.type_of_use==='Training'?'selected':'' %>>Training</option>
+        <option value="Competition" <%= booking.type_of_use==='Competition'?'selected':'' %>>Competition</option>
+        <option value="Recreational" <%= booking.type_of_use==='Recreational'?'selected':'' %>>Recreational</option>
+        <option value="Other" <%= booking.type_of_use!=='Training' && booking.type_of_use!=='Competition' && booking.type_of_use!=='Recreational' ? 'selected':'' %>>Other</option>
+      </select>
+      <input type="text" name="type_of_use_other" placeholder="If Other, specify" value="<%= (booking.type_of_use!=='Training' && booking.type_of_use!=='Competition' && booking.type_of_use!=='Recreational') ? booking.type_of_use : '' %>">
+
+      <label>Participants:</label>
+      <input type="number" name="participants" value="<%= booking.participants %>" required>
+
+      <label>Supervisors:</label>
+      <input type="number" name="supervisors" value="<%= booking.supervisors %>" required>
+
+      <label>Date:</label>
+      <input type="date" name="date" value="<%= booking.date %>" required>
+
+      <label>Start Time:</label>
+      <input type="time" name="start_time" value="<%= booking.start_time %>" required>
+
+      <label>Finish Time:</label>
+      <input type="time" name="finish_time" value="<%= booking.finish_time %>" required>
+
+      <label>Upload Risk Assessment (PDF) - optional:</label>
+      <input type="file" name="risk_file" accept=".pdf">
+
+      <label>Notes:</label>
+      <textarea name="notes"><%= booking.notes || '' %></textarea>
+
+      <button type="submit">Save & Resubmit (Pending)</button>
+    </form>
+  </div>
+</body>
+</html>

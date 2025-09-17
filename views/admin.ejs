@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+
+  <!-- MAIN NAVBAR -->
+  <%- include('partials/navbar') %>
+
+  <% if (!session.admin) { %>
+    <!-- ADMIN LOGIN FORM -->
+    <div class="container mt-4">
+      <h1>Admin Login</h1>
+      <% if (error) { %>
+        <p class="error"><%= error %></p>
+      <% } %>
+      <form method="POST" action="/admin/login">
+        <div class="form-group">
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Login</button>
+      </form>
+    </div>
+  <% } else { %>
+
+    <!-- LOGOUT BUTTON -->
+    <div class="logout-container" style="text-align:right; margin:10px;">
+      <span>Logged in as Admin</span>
+      <a href="/admin/logout" class="btn btn-outline-danger">Logout</a>
+    </div>
+
+    <% 
+      function formatTime(t) {
+        if (!t) return "";
+        let d = new Date("1970-01-01T" + t);
+        let hours = d.getHours();
+        let minutes = d.getMinutes().toString().padStart(2,"0");
+        let ampm = hours >= 12 ? "PM" : "AM";
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${hours}:${minutes} ${ampm}`;
+      }
+
+      function formatApprovedAt(dt) {
+        if (!dt) return "";
+        let d = new Date(dt);
+        let day = d.getDate().toString().padStart(2,"0");
+        let month = (d.getMonth()+1).toString().padStart(2,"0");
+        let year = d.getFullYear();
+        let hours = d.getHours();
+        let minutes = d.getMinutes().toString().padStart(2,"0");
+        let ampm = hours >= 12 ? "PM" : "AM";
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
+      }
+
+      function renderTable(bookings, title) { 
+    %>
+      <h2><%= title %> (<%= bookings.length %>)</h2>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Requester</th>
+            <th>Email</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Risk File</th>
+            <th>Notes</th>
+            <th>Status</th>
+            <% if(title === "Approved Bookings") { %>
+              <th>Approved At</th>
+            <% } %>
+            <th>Feedback</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% bookings.forEach(b => { %>
+            <tr>
+              <td><%= b.id %></td>
+              <td><%= b.requester %></td>
+              <td><%= b.email %></td>
+              <td><%= b.type_of_use %></td>
+              <td><%= b.date %></td>
+              <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
+              <td>
+                <% if(b.risk_file){ %>
+                  <a href="/uploads/<%= b.risk_file %>" target="_blank">View</a>
+                <% } %>
+              </td>
+              <td><%= b.notes %></td>
+              <td><%= b.status %></td>
+              <% if(title === "Approved Bookings") { %>
+                <td><%= formatApprovedAt(b.approved_at) %></td>
+              <% } %>
+              <td>
+                <form method="POST" action="/admin/<%= b.id %>/feedback">
+                  <input type="text" name="feedback" value="<%= b.feedback %>">
+                  <button type="submit">Save</button>
+                </form>
+              </td>
+              <td>
+                <% if(b.status === 'pending'){ %>
+                  <form method="POST" action="/admin/<%= b.id %>/approved" style="display:inline;">
+                    <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                  </form>
+                  <form method="POST" action="/admin/<%= b.id %>/rejected" style="display:inline;">
+                    <button type="submit" class="btn btn-warning btn-sm">Reject</button>
+                  </form>
+                <% } %>
+                <form method="POST" action="/admin/<%= b.id %>/delete" style="display:inline;">
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this booking?');">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <% renderTable(pending, "Pending Bookings") %>
+    <% renderTable(approved, "Approved Bookings") %>
+    <% renderTable(rejected, "Rejected Bookings") %>
+
+  <% } %>
+
+</body>
+</html>

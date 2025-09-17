@@ -1,0 +1,20 @@
+{
+  "name": "internal-bookings",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "dotenv": "^17.2.2",
+    "ejs": "^3.1.9",
+    "express": "^4.21.2",
+    "express-session": "^1.18.2",
+    "multer": "^2.0.2",
+    "nodemailer": "^7.0.6",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  }
+}

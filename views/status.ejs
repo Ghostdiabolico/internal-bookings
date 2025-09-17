@@ -1,0 +1,46 @@
+<%- include('partials/navbar') %>
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Booking Status</title>
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <h1>Check Your Booking Status</h1>
+
+  <form method="GET" action="/status">
+    <label>Enter your name or email:</label>
+    <input type="text" name="contact" value="<%= contact %>" required>
+    <button type="submit">Check Status</button>
+  </form>
+
+  <% if (bookings.length > 0) { %>
+    <h2>Bookings Found:</h2>
+    <table border="1" cellpadding="5" cellspacing="0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type of Use</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% bookings.forEach(b => { %>
+          <tr>
+            <td><%= b.id %></td>
+            <td><%= b.type_of_use %></td>
+            <td><%= b.date %></td>
+            <td><%= b.time %></td>
+            <td><%= b.status %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else if (contact) { %>
+    <p>No bookings found for "<%= contact %>"</p>
+  <% } %>
+</body>
+</html>

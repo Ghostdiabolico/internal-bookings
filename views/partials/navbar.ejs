@@ -1,0 +1,13 @@
+<nav class="navbar">
+  <div class="container" style="display:flex; gap:12px; align-items:center; justify-content:center;">
+    <a href="/" class="nav-btn">Home</a>
+    <a href="/form" class="nav-btn">Request Booking</a>
+    <a href="/calendar" class="nav-btn">Approved Bookings</a>
+    <a href="/my-bookings" class="nav-btn">My Bookings</a>
+    <a href="/admin" class="nav-btn">Admin</a>
+
+    <% if (session && session.admin) { %>
+      <a href="/admin/logout" class="nav-btn" style="margin-left:20px; color:red;">Logout</a>
+    <% } %>
+  </div>
+</nav>
