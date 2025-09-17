@@ -20,8 +20,10 @@ router.get("/", (req, res) => res.render("index", { session: req.session }));
 router.get("/form", (req, res) => {
   const submitted = req.query.submitted === "1";
   const accessCode = req.query.code || null;
-  res.render("form", { submitted, accessCode, session: req.session });
+  const email = req.query.email || ""; // define email so EJS can use it
+  res.render("form", { submitted, accessCode, email, session: req.session });
 });
+
 
 router.post("/form", upload.single("risk_file"), async (req, res) => {
   try {
