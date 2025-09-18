@@ -2,6 +2,8 @@ import express from "express";
 import path from "path";
 import multer from "multer";
 import crypto from "crypto";
+import { pool } from "../db.js";
+ // PostgreSQL pool
 
 const router = express.Router();
 
@@ -20,10 +22,9 @@ router.get("/", (req, res) => res.render("index", { session: req.session }));
 router.get("/form", (req, res) => {
   const submitted = req.query.submitted === "1";
   const accessCode = req.query.code || null;
-  const email = req.query.email || ""; // define email so EJS can use it
+  const email = req.query.email || "";
   res.render("form", { submitted, accessCode, email, session: req.session });
 });
-
 
 router.post("/form", upload.single("risk_file"), async (req, res) => {
   try {
@@ -52,10 +53,10 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
 
     const accessCode = crypto.randomBytes(3).toString("hex");
 
-    await req.db.run(
+    await pool.query(
       `INSERT INTO pool_bookings
        (requester,email,type_of_use,participants,supervisors,date,start_time,finish_time,risk_file,equipment,equipment_other,notes,status,feedback,access_code)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'pending','',?)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pending','',$13)`,
       [
         requester,
         email,
@@ -85,10 +86,10 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
 // -------------------
 router.get("/calendar", async (req, res) => {
   try {
-    const bookings = await req.db.all(
+    const result = await pool.query(
       "SELECT * FROM pool_bookings WHERE status='approved' ORDER BY date,start_time"
     );
-    res.render("calendar", { bookings, session: req.session });
+    res.render("calendar", { bookings: result.rows, session: req.session });
   } catch (err) {
     console.error("Error GET /calendar:", err);
     res.status(500).send("Error loading calendar");
@@ -103,10 +104,11 @@ router.get("/my-bookings", async (req, res) => {
 
   if (send_code && email) {
     try {
-      const booking = await req.db.get(
-        "SELECT * FROM pool_bookings WHERE email=? ORDER BY created_at DESC LIMIT 1",
+      const bookingRes = await pool.query(
+        "SELECT * FROM pool_bookings WHERE email=$1 ORDER BY created_at DESC LIMIT 1",
         [email]
       );
+      const booking = bookingRes.rows[0];
       if (booking) {
         return res.render("my-bookings", {
           bookings: [],
@@ -133,11 +135,11 @@ router.get("/my-bookings", async (req, res) => {
     return res.render("my-bookings", { bookings: [], email: "", code: "", message: "", session: req.session });
 
   try {
-    const bookings = await req.db.all(
-      `SELECT * FROM pool_bookings WHERE email=? AND access_code=? ORDER BY created_at DESC`,
+    const bookingsRes = await pool.query(
+      "SELECT * FROM pool_bookings WHERE email=$1 AND access_code=$2 ORDER BY created_at DESC",
       [email, code]
     );
-    res.render("my-bookings", { bookings, email, code, message: "", session: req.session });
+    res.render("my-bookings", { bookings: bookingsRes.rows, email, code, message: "", session: req.session });
   } catch (err) {
     console.error("Error GET /my-bookings:", err);
     res.status(500).send("Error loading bookings");
@@ -150,7 +152,8 @@ router.get("/my-bookings", async (req, res) => {
 router.get("/edit-booking/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const booking = await req.db.get("SELECT * FROM pool_bookings WHERE id=?", [id]);
+    const bookingRes = await pool.query("SELECT * FROM pool_bookings WHERE id=$1", [id]);
+    const booking = bookingRes.rows[0];
     if (!booking) return res.status(404).send("Booking not found");
     if (booking.status !== "rejected") return res.status(403).send("Only rejected bookings can be edited.");
     res.render("edit-booking", { booking, session: req.session });
@@ -187,11 +190,11 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
     else if (equipment) finalEquipment = equipment;
     if (equipment_other) finalEquipment += finalEquipment ? ", " + equipment_other : equipment_other;
 
-    await req.db.run(
+    await pool.query(
       `UPDATE pool_bookings
-       SET requester=?, email=?, type_of_use=?, participants=?, supervisors=?, date=?, start_time=?, finish_time=?,
-           risk_file=COALESCE(?, risk_file), equipment=?, equipment_other=?, notes=?, status='pending', feedback=''
-       WHERE id=?`,
+       SET requester=$1, email=$2, type_of_use=$3, participants=$4, supervisors=$5, date=$6, start_time=$7, finish_time=$8,
+           risk_file=COALESCE($9, risk_file), equipment=$10, equipment_other=$11, notes=$12, status='pending', feedback=''
+       WHERE id=$13`,
       [
         requester,
         email,
@@ -221,19 +224,11 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
 // -------------------
 router.get("/admin/login", (req, res) => {
   if (req.session.admin) return res.redirect("/admin");
-  res.render("admin", { 
-    error: "", 
-    session: req.session, 
-    pending: [], 
-    approved: [], 
-    rejected: [] 
-  });
+  res.render("admin", { error: "", session: req.session, pending: [], approved: [], rejected: [] });
 });
 
 router.post("/admin/login", (req, res) => {
   const { username, password } = req.body;
-
-  // Use credentials from .env
   const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
@@ -241,13 +236,7 @@ router.post("/admin/login", (req, res) => {
     req.session.admin = true;
     res.redirect("/admin");
   } else {
-    res.render("admin", { 
-      error: "Invalid username or password", 
-      session: req.session, 
-      pending: [], 
-      approved: [], 
-      rejected: [] 
-    });
+    res.render("admin", { error: "Invalid username or password", session: req.session, pending: [], approved: [], rejected: [] });
   }
 });
 
@@ -264,17 +253,17 @@ router.get("/admin/logout", (req, res) => {
 router.get("/admin", async (req, res) => {
   if (!req.session.admin) return res.redirect("/admin/login");
   try {
-    const pending = await req.db.all(
-      "SELECT * FROM pool_bookings WHERE status='pending' ORDER BY created_at DESC"
-    );
-    const approved = await req.db.all(
-      "SELECT * FROM pool_bookings WHERE status='approved' ORDER BY date,start_time"
-    );
-    const rejected = await req.db.all(
-      "SELECT * FROM pool_bookings WHERE status='rejected' ORDER BY date,start_time"
-    );
+    const pendingRes = await pool.query("SELECT * FROM pool_bookings WHERE status='pending' ORDER BY created_at DESC");
+    const approvedRes = await pool.query("SELECT * FROM pool_bookings WHERE status='approved' ORDER BY date,start_time");
+    const rejectedRes = await pool.query("SELECT * FROM pool_bookings WHERE status='rejected' ORDER BY date,start_time");
 
-    res.render("admin", { pending, approved, rejected, session: req.session, error: "" });
+    res.render("admin", {
+      pending: pendingRes.rows,
+      approved: approvedRes.rows,
+      rejected: rejectedRes.rows,
+      session: req.session,
+      error: ""
+    });
   } catch (err) {
     console.error("Error GET /admin:", err);
     res.status(500).send("Error loading admin page");
@@ -287,16 +276,17 @@ router.get("/admin", async (req, res) => {
 router.post("/admin/:id/delete", async (req, res) => {
   const { id } = req.params;
   try {
-    const booking = await req.db.get("SELECT * FROM pool_bookings WHERE id=?", [id]);
+    const bookingRes = await pool.query("SELECT * FROM pool_bookings WHERE id=$1", [id]);
+    const booking = bookingRes.rows[0];
     if (!booking) return res.status(404).send("Booking not found");
 
-    await req.db.run(
+    await pool.query(
       `INSERT INTO booking_logs (booking_id, requester, email, type_of_use, date, action)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [booking.id, booking.requester, booking.email, booking.type_of_use, booking.date, "deleted"]
     );
 
-    await req.db.run("DELETE FROM pool_bookings WHERE id=?", [id]);
+    await pool.query("DELETE FROM pool_bookings WHERE id=$1", [id]);
     res.redirect("/admin");
   } catch (err) {
     console.error("Error POST /admin/:id/delete:", err);
@@ -311,7 +301,7 @@ router.post("/admin/:id/feedback", async (req, res) => {
   const { id } = req.params;
   const feedback = req.body.feedback || "";
   try {
-    await req.db.run("UPDATE pool_bookings SET feedback=? WHERE id=?", [feedback, id]);
+    await pool.query("UPDATE pool_bookings SET feedback=$1 WHERE id=$2", [feedback, id]);
     res.redirect("/admin");
   } catch (err) {
     console.error("Error POST /admin/:id/feedback:", err);
@@ -327,10 +317,7 @@ router.post("/admin/:id/:action", async (req, res) => {
   if (!["approved", "rejected"].includes(action)) return res.status(400).send("Invalid action");
   try {
     const approved_at = action === "approved" ? new Date().toISOString() : null;
-    await req.db.run(
-      "UPDATE pool_bookings SET status=?, approved_at=? WHERE id=?",
-      [action, approved_at, id]
-    );
+    await pool.query("UPDATE pool_bookings SET status=$1, approved_at=$2 WHERE id=$3", [action, approved_at, id]);
     res.redirect("/admin");
   } catch (err) {
     console.error("Error POST /admin/:id/:action:", err);

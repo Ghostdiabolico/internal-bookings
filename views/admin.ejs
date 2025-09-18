@@ -1,3 +1,5 @@
+<%- include('partials/navbar') %>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,11 +9,7 @@
 </head>
 <body>
 
-  <!-- MAIN NAVBAR -->
-  <%- include('partials/navbar') %>
-
   <% if (!session.admin) { %>
-    <!-- ADMIN LOGIN FORM -->
     <div class="container mt-4">
       <h1>Admin Login</h1>
       <% if (error) { %>
@@ -31,7 +29,6 @@
     </div>
   <% } else { %>
 
-    <!-- LOGOUT BUTTON -->
     <div class="logout-container" style="text-align:right; margin:10px;">
       <span>Logged in as Admin</span>
       <a href="/admin/logout" class="btn btn-outline-danger">Logout</a>
