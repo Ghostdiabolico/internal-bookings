@@ -4,13 +4,10 @@ import dotenv from "dotenv";
 dotenv.config();
 const { Pool } = pkg;
 
-// PostgreSQL connection pool
+// Use DATABASE_URL if available (Render), otherwise fallback to local
 export const pool = new Pool({
-  host: process.env.PG_HOST || "localhost",
-  user: process.env.PG_USER || "pguser",
-  password: process.env.PG_PASSWORD || "pgpassword",
-  database: process.env.PG_DATABASE || "internal_bookings",
-  port: process.env.PG_PORT || 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
 });
 
 // Optional: test connection
