@@ -52,8 +52,10 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
 
     // Properly handle equipment as array
     let finalEquipment = [];
-    if (Array.isArray(equipment)) finalEquipment = equipment;
-    else if (equipment) finalEquipment = [equipment];
+    if (equipment) {
+      if (Array.isArray(equipment)) finalEquipment = equipment;
+      else finalEquipment = [equipment];
+    }
     if (equipment_other) finalEquipment.push(equipment_other);
 
     const accessCode = crypto.randomBytes(3).toString("hex");
@@ -72,7 +74,7 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
         start_time || null,
         finish_time || null,
         risk_file,
-        finalEquipment,
+        finalEquipment, // <-- must be a JS array
         equipment_other || "",
         notes || "",
         accessCode,
@@ -192,8 +194,10 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
 
     // Properly handle equipment as array
     let finalEquipment = [];
-    if (Array.isArray(equipment)) finalEquipment = equipment;
-    else if (equipment) finalEquipment = [equipment];
+    if (equipment) {
+      if (Array.isArray(equipment)) finalEquipment = equipment;
+      else finalEquipment = [equipment];
+    }
     if (equipment_other) finalEquipment.push(equipment_other);
 
     await pool.query(
@@ -211,7 +215,7 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
         start_time || null,
         finish_time || null,
         newRiskFile,
-        finalEquipment,
+        finalEquipment, // <-- must be a JS array
         equipment_other || "",
         notes || "",
         id,
