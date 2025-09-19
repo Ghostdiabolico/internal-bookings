@@ -3,11 +3,12 @@ import path from "path";
 import multer from "multer";
 import crypto from "crypto";
 import { pool } from "../db.js";
- // PostgreSQL pool
 
 const router = express.Router();
 
+// -------------------
 // Multer setup for file uploads
+// -------------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
@@ -180,6 +181,9 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
       equipment_other,
       notes,
       access_code,
+      status,
+      feedback,
+      approved_at,
     } = req.body;
 
     const newRiskFile = req.file ? req.file.filename : null;
@@ -190,11 +194,26 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
     else if (equipment) finalEquipment = equipment;
     if (equipment_other) finalEquipment += finalEquipment ? ", " + equipment_other : equipment_other;
 
+    const approvedAtValue = approved_at ? new Date(approved_at) : null;
+
     await pool.query(
       `UPDATE pool_bookings
-       SET requester=$1, email=$2, type_of_use=$3, participants=$4, supervisors=$5, date=$6, start_time=$7, finish_time=$8,
-           risk_file=COALESCE($9, risk_file), equipment=$10, equipment_other=$11, notes=$12, status='pending', feedback=''
-       WHERE id=$13`,
+       SET requester=$1,
+           email=$2,
+           type_of_use=$3,
+           participants=$4,
+           supervisors=$5,
+           date=$6,
+           start_time=$7,
+           finish_time=$8,
+           risk_file=COALESCE($9, risk_file),
+           equipment=$10,
+           equipment_other=$11,
+           notes=$12,
+           status=$13,
+           feedback=$14,
+           approved_at=$15
+       WHERE id=$16`,
       [
         requester,
         email,
@@ -208,6 +227,9 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
         finalEquipment,
         equipment_other || "",
         notes || "",
+        status || "pending",
+        feedback || "",
+        approvedAtValue,
         id,
       ]
     );
