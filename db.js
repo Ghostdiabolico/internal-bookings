@@ -4,17 +4,17 @@ import dotenv from "dotenv";
 dotenv.config();
 const { Pool } = pkg;
 
-// Use DATABASE_URL if present (Render), otherwise use local env variables
+// Use DATABASE_URL if present (production / Render), otherwise local env variables
 const connectionConfig = process.env.DATABASE_URL
   ? {
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // required for Render
+      ssl: { rejectUnauthorized: false }, // required for Neon / Render
     }
   : {
-      host: process.env.PG_HOST || "localhost",
-      user: process.env.PG_USER || "pguser",
-      password: process.env.PG_PASSWORD || "pgpassword",
-      database: process.env.PG_DATABASE || "internal_bookings",
+      host: process.env.PG_HOST,
+      user: process.env.PG_USER,
+      password: process.env.PG_PASSWORD,
+      database: process.env.PG_DATABASE,
       port: process.env.PG_PORT || 5432,
     };
 
