@@ -4,23 +4,23 @@ import dotenv from "dotenv";
 dotenv.config();
 const { Pool } = pkg;
 
-// Use DATABASE_URL if present (production / Render), otherwise local env variables
-const connectionConfig = process.env.DATABASE_URL
-  ? {
+// Use DATABASE_URL if present (Render/Neon), otherwise use local env variables
+const pool = process.env.DATABASE_URL
+  ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // required for Neon / Render
-    }
-  : {
-      host: process.env.PG_HOST,
-      user: process.env.PG_USER,
-      password: process.env.PG_PASSWORD,
-      database: process.env.PG_DATABASE,
-      port: process.env.PG_PORT || 5432,
-    };
-
-export const pool = new Pool(connectionConfig);
+      ssl: { rejectUnauthorized: false }, // required for Render/Neon
+    })
+  : new Pool({
+      host: process.env.DB_HOST || "localhost",
+      user: process.env.DB_USER || "pguser",
+      password: process.env.DB_PASSWORD || "pgpassword",
+      database: process.env.DB_NAME || "internal_bookings",
+      port: process.env.DB_PORT || 5432,
+    });
 
 // Optional: test connection
 pool.connect()
   .then(() => console.log("Connected to PostgreSQL"))
   .catch(err => console.error("PostgreSQL connection error:", err));
+
+export { pool };
