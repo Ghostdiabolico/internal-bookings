@@ -74,7 +74,7 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
         start_time || null,
         finish_time || null,
         risk_file,
-        finalEquipment, // <-- must be a JS array
+        finalEquipment, // PostgreSQL array
         equipment_other || "",
         notes || "",
         accessCode,
@@ -215,7 +215,7 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
         start_time || null,
         finish_time || null,
         newRiskFile,
-        finalEquipment, // <-- must be a JS array
+        finalEquipment,
         equipment_other || "",
         notes || "",
         id,
