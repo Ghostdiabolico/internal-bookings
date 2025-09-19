@@ -62,7 +62,7 @@
       <tbody>
         <% bookings.forEach(booking => { %>
           <tr>
-            <td><%= booking.date %></td>
+            <td><%= new Date(booking.date).toISOString().split('T')[0] %></td>
             <td><%= booking.start_time %> - <%= booking.finish_time %></td>
             <td><%= booking.type_of_use %></td>
             <td><%= booking.participants || '-' %></td>

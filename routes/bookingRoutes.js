@@ -74,7 +74,7 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
         start_time || null,
         finish_time || null,
         risk_file,
-        finalEquipment, // PostgreSQL array
+        finalEquipment,
         equipment_other || "",
         notes || "",
         accessCode,
@@ -142,11 +142,43 @@ router.get("/my-bookings", async (req, res) => {
     return res.render("my-bookings", { bookings: [], email: "", code: "", message: "", session: req.session });
 
   try {
-    const bookingsRes = await pool.query(
-      "SELECT * FROM pool_bookings WHERE email=$1 AND access_code=$2 ORDER BY created_at DESC",
+    // Step 1: Verify the access code for this email
+    const verifyRes = await pool.query(
+      "SELECT * FROM pool_bookings WHERE email=$1 AND access_code=$2",
       [email, code]
     );
-    res.render("my-bookings", { bookings: bookingsRes.rows, email, code, message: "", session: req.session });
+
+    if (verifyRes.rows.length === 0) {
+      return res.render("my-bookings", {
+        bookings: [],
+        email,
+        code: "",
+        message: "Invalid access code.",
+        session: req.session,
+      });
+    }
+
+    // Step 2: Access code valid → show all bookings for this email
+    const bookingsRes = await pool.query(
+      "SELECT * FROM pool_bookings WHERE email=$1 ORDER BY created_at DESC",
+      [email]
+    );
+
+    // Format dates before sending to EJS
+    const formattedBookings = bookingsRes.rows.map(b => ({
+      ...b,
+      date: b.date ? new Date(b.date).toISOString().split("T")[0] : "",
+      start_time: b.start_time ? b.start_time.slice(0, 5) : "",
+      finish_time: b.finish_time ? b.finish_time.slice(0, 5) : "",
+    }));
+
+    res.render("my-bookings", {
+      bookings: formattedBookings,
+      email,
+      code,
+      message: "",
+      session: req.session,
+    });
   } catch (err) {
     console.error("Error GET /my-bookings:", err);
     res.status(500).send("Error loading bookings");
