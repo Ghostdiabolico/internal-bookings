@@ -27,6 +27,9 @@ router.get("/form", (req, res) => {
   res.render("form", { submitted, accessCode, email, session: req.session });
 });
 
+// -------------------
+// Create Booking
+// -------------------
 router.post("/form", upload.single("risk_file"), async (req, res) => {
   try {
     const {
@@ -47,10 +50,11 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
     const risk_file = req.file ? req.file.filename : null;
     const finalType = type_of_use === "Other" ? type_of_use_other : type_of_use;
 
-    let finalEquipment = "";
-    if (Array.isArray(equipment)) finalEquipment = equipment.join(", ");
-    else if (equipment) finalEquipment = equipment;
-    if (equipment_other) finalEquipment += finalEquipment ? ", " + equipment_other : equipment_other;
+    // Properly handle equipment as array
+    let finalEquipment = [];
+    if (Array.isArray(equipment)) finalEquipment = equipment;
+    else if (equipment) finalEquipment = [equipment];
+    if (equipment_other) finalEquipment.push(equipment_other);
 
     const accessCode = crypto.randomBytes(3).toString("hex");
 
@@ -181,39 +185,22 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
       equipment_other,
       notes,
       access_code,
-      status,
-      feedback,
-      approved_at,
     } = req.body;
 
     const newRiskFile = req.file ? req.file.filename : null;
     const finalType = type_of_use === "Other" ? type_of_use_other : type_of_use;
 
-    let finalEquipment = "";
-    if (Array.isArray(equipment)) finalEquipment = equipment.join(", ");
-    else if (equipment) finalEquipment = equipment;
-    if (equipment_other) finalEquipment += finalEquipment ? ", " + equipment_other : equipment_other;
-
-    const approvedAtValue = approved_at ? new Date(approved_at) : null;
+    // Properly handle equipment as array
+    let finalEquipment = [];
+    if (Array.isArray(equipment)) finalEquipment = equipment;
+    else if (equipment) finalEquipment = [equipment];
+    if (equipment_other) finalEquipment.push(equipment_other);
 
     await pool.query(
       `UPDATE pool_bookings
-       SET requester=$1,
-           email=$2,
-           type_of_use=$3,
-           participants=$4,
-           supervisors=$5,
-           date=$6,
-           start_time=$7,
-           finish_time=$8,
-           risk_file=COALESCE($9, risk_file),
-           equipment=$10,
-           equipment_other=$11,
-           notes=$12,
-           status=$13,
-           feedback=$14,
-           approved_at=$15
-       WHERE id=$16`,
+       SET requester=$1, email=$2, type_of_use=$3, participants=$4, supervisors=$5, date=$6, start_time=$7, finish_time=$8,
+           risk_file=COALESCE($9, risk_file), equipment=$10, equipment_other=$11, notes=$12, status='pending', feedback=''
+       WHERE id=$13`,
       [
         requester,
         email,
@@ -227,9 +214,6 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
         finalEquipment,
         equipment_other || "",
         notes || "",
-        status || "pending",
-        feedback || "",
-        approvedAtValue,
         id,
       ]
     );
