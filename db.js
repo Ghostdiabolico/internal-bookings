@@ -7,12 +7,10 @@ const { Pool } = pkg;
 let pool;
 
 if (process.env.DATABASE_URL) {
-  // Using Render/Neon
+  // Production: Neon / Render
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL.includes("sslmode=require")
-      ? true
-      : { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized: false }, // required for Neon
   });
 } else {
   // Local development
@@ -25,9 +23,11 @@ if (process.env.DATABASE_URL) {
   });
 }
 
-// ✅ Test query (safe, doesn't hold a client open)
-pool.query("SELECT NOW()")
-  .then(res => console.log("Connected to PostgreSQL at", res.rows[0].now))
-  .catch(err => console.error("PostgreSQL connection error:", err));
+// Test connection (only in dev)
+if (process.env.NODE_ENV !== "production") {
+  pool.query("SELECT NOW()")
+    .then(res => console.log("Connected to PostgreSQL at", res.rows[0].now))
+    .catch(err => console.error("PostgreSQL connection error:", err));
+}
 
 export { pool };

@@ -5,36 +5,46 @@
 <head>
   <meta charset="UTF-8">
   <title>Admin Panel</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/styles/main.css">
+  <style>
+    .table td, .table th {
+      white-space: nowrap;
+    }
+    .feedback-input {
+      min-width: 150px;
+    }
+  </style>
 </head>
 <body>
 
-  <% if (!session.admin) { %>
-    <div class="container mt-4">
-      <h1>Admin Login</h1>
-      <% if (error) { %>
-        <p class="error"><%= error %></p>
-      <% } %>
-      <form method="POST" action="/admin/login">
-        <div class="form-group">
-          <label for="username">Username:</label>
-          <input type="text" id="username" name="username" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label for="password">Password:</label>
-          <input type="password" id="password" name="password" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-primary mt-2">Login</button>
-      </form>
-    </div>
-  <% } else { %>
+<% if (!session.admin) { %>
+  <div class="container mt-4">
+    <h1>Admin Login</h1>
+    <% if (error) { %>
+      <div class="alert alert-danger"><%= error %></div>
+    <% } %>
+    <form method="POST" action="/admin/login">
+      <div class="mb-3">
+        <label for="username" class="form-label">Username</label>
+        <input type="text" id="username" name="username" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" id="password" name="password" class="form-control" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+  </div>
+<% } else { %>
 
-    <div class="logout-container" style="text-align:right; margin:10px;">
-      <span>Logged in as Admin</span>
+  <div class="container-fluid mt-2">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1>Admin Panel</h1>
       <a href="/admin/logout" class="btn btn-outline-danger">Logout</a>
     </div>
 
-    <% 
+    <%
       function formatTime(t) {
         if (!t) return "";
         let d = new Date("1970-01-01T" + t);
@@ -60,11 +70,12 @@
         return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
       }
 
-      function renderTable(bookings, title) { 
+      function renderTable(bookings, title) {
     %>
-      <h2><%= title %> (<%= bookings.length %>)</h2>
-      <table class="table table-striped">
-        <thead>
+      <h3 class="mt-4"><%= title %> (<%= bookings.length %>)</h3>
+      <div class="table-responsive">
+      <table class="table table-striped table-bordered align-middle">
+        <thead class="table-dark">
           <tr>
             <th>ID</th>
             <th>Requester</th>
@@ -72,12 +83,15 @@
             <th>Type</th>
             <th>Date</th>
             <th>Time</th>
-            <th>Risk File</th>
+            <th>Participants</th>
+            <th>Age Range</th>
+            <th>Supervisors</th>
+            <th>Event Name</th>
+            <th>Equipment</th>
+            <th>Other Activities</th>
             <th>Notes</th>
             <th>Status</th>
-            <% if(title === "Approved Bookings") { %>
-              <th>Approved At</th>
-            <% } %>
+            <% if(title === "Approved Bookings") { %><th>Approved At</th><% } %>
             <th>Feedback</th>
             <th>Actions</th>
           </tr>
@@ -88,35 +102,55 @@
               <td><%= b.id %></td>
               <td><%= b.requester %></td>
               <td><%= b.email %></td>
-              <td><%= b.type_of_use %></td>
-              <td><%= b.date %></td>
+              <td><% if (b.type_of_use === "Other" && b.type_of_use_other) { %> <%= b.type_of_use_other %>
+  <% } else { %>
+    <%= b.type_of_use %>
+  <% } %>
+</td>
+
+              <td><%= b.date ? new Date(b.date).toISOString().split("T")[0] : "" %></td>
               <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
+              <td><%= b.participants || "-" %></td>
+              <td><%= b.age_range || "-" %></td>
+              <td><%= b.supervisors || "-" %></td>
+              <td><%= b.event_name || "-" %></td>
               <td>
-                <% if(b.risk_file){ %>
-                  <a href="/uploads/<%= b.risk_file %>" target="_blank">View</a>
+                <% if (b.equipment && b.equipment.length > 0) { %>
+                  <ul class="mb-0">
+                    <% b.equipment.forEach(eq => { %><li><%= eq %></li><% }) %>
+                  </ul>
+                <% } else { %>-<% } %>
+              </td>
+              <td><%= b.other_activities || "-" %></td>
+              <td><%= b.notes || "-" %></td>
+              <td>
+                <% if(b.status === 'pending') { %>
+                  <span class="badge bg-warning text-dark">Pending</span>
+                <% } else if(b.status === 'approved') { %>
+                  <span class="badge bg-success">Approved</span>
+                <% } else if(b.status === 'rejected') { %>
+                  <span class="badge bg-danger">Rejected</span>
                 <% } %>
               </td>
-              <td><%= b.notes %></td>
-              <td><%= b.status %></td>
               <% if(title === "Approved Bookings") { %>
                 <td><%= formatApprovedAt(b.approved_at) %></td>
               <% } %>
               <td>
-                <form method="POST" action="/admin/<%= b.id %>/feedback">
-                  <input type="text" name="feedback" value="<%= b.feedback %>">
-                  <button type="submit">Save</button>
+                <form method="POST" action="/admin/<%= b.id %>/feedback" class="d-flex">
+                  <input type="text" name="feedback" value="<%= b.feedback %>" class="form-control form-control-sm me-1 feedback-input">
+                  <button type="submit" class="btn btn-sm btn-primary">Save</button>
                 </form>
               </td>
               <td>
-                <% if(b.status === 'pending'){ %>
-                  <form method="POST" action="/admin/<%= b.id %>/approved" style="display:inline;">
-                    <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                <% if(b.status === 'pending') { %>
+                  <form method="POST" action="/admin/<%= b.id %>/approved" class="d-inline">
+                    <button type="submit" class="btn btn-success btn-sm mb-1">Approve</button>
                   </form>
-                  <form method="POST" action="/admin/<%= b.id %>/rejected" style="display:inline;">
-                    <button type="submit" class="btn btn-warning btn-sm">Reject</button>
+                  <form method="POST" action="/admin/<%= b.id %>/rejected" class="d-inline">
+                    <button type="submit" class="btn btn-warning btn-sm mb-1">Reject</button>
                   </form>
                 <% } %>
-                <form method="POST" action="/admin/<%= b.id %>/delete" style="display:inline;">
+                <form method="POST" action="/admin/<%= b.id %>/delete" class="d-inline">
                   <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this booking?');">Delete</button>
                 </form>
               </td>
@@ -124,13 +158,17 @@
           <% }) %>
         </tbody>
       </table>
+      </div>
     <% } %>
 
     <% renderTable(pending, "Pending Bookings") %>
     <% renderTable(approved, "Approved Bookings") %>
     <% renderTable(rejected, "Rejected Bookings") %>
 
-  <% } %>
+  </div>
 
+<% } %>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

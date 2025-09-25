@@ -3,16 +3,14 @@ import path from "path";
 import multer from "multer";
 import crypto from "crypto";
 import { pool } from "../db.js";
+import { supabase, bucketName } from "../supabase.js";
 
 const router = express.Router();
 
 // -------------------
-// Multer setup for file uploads
+// Multer setup for file uploads (memory storage)
 // -------------------
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
-});
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // -------------------
@@ -47,15 +45,27 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
       notes,
     } = req.body;
 
-    const risk_file = req.file ? req.file.filename : null;
-    const finalType = type_of_use === "Other" ? type_of_use_other : type_of_use;
+    if (!date) return res.status(400).send("Date is required");
 
-    // Properly handle equipment as array
-    let finalEquipment = [];
-    if (equipment) {
-      if (Array.isArray(equipment)) finalEquipment = equipment;
-      else finalEquipment = [equipment];
+    let risk_file = null;
+    if (req.file) {
+      const filename = Date.now() + path.extname(req.file.originalname);
+      console.log("[UPLOAD] Trying to upload file to Supabase:", filename);
+
+      const { error } = await supabase.storage
+        .from(bucketName)
+        .upload(filename, req.file.buffer, { upsert: true });
+
+      if (error) {
+        console.error("[SUPABASE UPLOAD ERROR]", error);
+        throw error;
+      }
+      risk_file = filename;
     }
+
+    const finalType = type_of_use === "Other" ? type_of_use_other : type_of_use;
+    let finalEquipment = [];
+    if (equipment) finalEquipment = Array.isArray(equipment) ? equipment : [equipment];
     if (equipment_other) finalEquipment.push(equipment_other);
 
     const accessCode = crypto.randomBytes(3).toString("hex");
@@ -70,7 +80,7 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
         finalType,
         participants || null,
         supervisors || null,
-        date || null,
+        date,
         start_time || null,
         finish_time || null,
         risk_file,
@@ -83,7 +93,7 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
 
     res.redirect("/form?submitted=1&code=" + accessCode);
   } catch (err) {
-    console.error("Error POST /form:", err);
+    console.error("[ERROR POST /form]", err);
     res.status(500).send("Error saving booking.");
   }
 });
@@ -98,7 +108,7 @@ router.get("/calendar", async (req, res) => {
     );
     res.render("calendar", { bookings: result.rows, session: req.session });
   } catch (err) {
-    console.error("Error GET /calendar:", err);
+    console.error("[ERROR GET /calendar]", err);
     res.status(500).send("Error loading calendar");
   }
 });
@@ -116,20 +126,11 @@ router.get("/my-bookings", async (req, res) => {
         [email]
       );
       const booking = bookingRes.rows[0];
-      if (booking) {
-        return res.render("my-bookings", {
-          bookings: [],
-          email,
-          code: "",
-          message: `Your latest access code is: ${booking.access_code}`,
-          session: req.session,
-        });
-      }
       return res.render("my-bookings", {
         bookings: [],
         email,
         code: "",
-        message: "No booking found for that email.",
+        message: booking ? `Your latest access code is: ${booking.access_code}` : "No booking found for that email.",
         session: req.session,
       });
     } catch (err) {
@@ -142,29 +143,18 @@ router.get("/my-bookings", async (req, res) => {
     return res.render("my-bookings", { bookings: [], email: "", code: "", message: "", session: req.session });
 
   try {
-    // Step 1: Verify the access code for this email
     const verifyRes = await pool.query(
       "SELECT * FROM pool_bookings WHERE email=$1 AND access_code=$2",
       [email, code]
     );
-
     if (verifyRes.rows.length === 0) {
-      return res.render("my-bookings", {
-        bookings: [],
-        email,
-        code: "",
-        message: "Invalid access code.",
-        session: req.session,
-      });
+      return res.render("my-bookings", { bookings: [], email, code: "", message: "Invalid access code.", session: req.session });
     }
 
-    // Step 2: Access code valid → show all bookings for this email
     const bookingsRes = await pool.query(
       "SELECT * FROM pool_bookings WHERE email=$1 ORDER BY created_at DESC",
       [email]
     );
-
-    // Format dates before sending to EJS
     const formattedBookings = bookingsRes.rows.map(b => ({
       ...b,
       date: b.date ? new Date(b.date).toISOString().split("T")[0] : "",
@@ -172,15 +162,9 @@ router.get("/my-bookings", async (req, res) => {
       finish_time: b.finish_time ? b.finish_time.slice(0, 5) : "",
     }));
 
-    res.render("my-bookings", {
-      bookings: formattedBookings,
-      email,
-      code,
-      message: "",
-      session: req.session,
-    });
+    res.render("my-bookings", { bookings: formattedBookings, email, code, message: "", session: req.session });
   } catch (err) {
-    console.error("Error GET /my-bookings:", err);
+    console.error("[ERROR GET /my-bookings]", err);
     res.status(500).send("Error loading bookings");
   }
 });
@@ -197,7 +181,7 @@ router.get("/edit-booking/:id", async (req, res) => {
     if (booking.status !== "rejected") return res.status(403).send("Only rejected bookings can be edited.");
     res.render("edit-booking", { booking, session: req.session });
   } catch (err) {
-    console.error("Error GET /edit-booking/:id:", err);
+    console.error("[ERROR GET /edit-booking/:id]", err);
     res.status(500).send("Error loading edit form");
   }
 });
@@ -221,42 +205,32 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
       access_code,
     } = req.body;
 
-    const newRiskFile = req.file ? req.file.filename : null;
-    const finalType = type_of_use === "Other" ? type_of_use_other : type_of_use;
+    if (!date) return res.status(400).send("Date is required");
 
-    // Properly handle equipment as array
-    let finalEquipment = [];
-    if (equipment) {
-      if (Array.isArray(equipment)) finalEquipment = equipment;
-      else finalEquipment = [equipment];
+    let newRiskFile = null;
+    if (req.file) {
+      const filename = Date.now() + path.extname(req.file.originalname);
+      const { error } = await supabase.storage.from(bucketName).upload(filename, req.file.buffer, { upsert: true });
+      if (error) throw error;
+      newRiskFile = filename;
     }
+
+    const finalType = type_of_use === "Other" ? type_of_use_other : type_of_use;
+    let finalEquipment = [];
+    if (equipment) finalEquipment = Array.isArray(equipment) ? equipment : [equipment];
     if (equipment_other) finalEquipment.push(equipment_other);
 
     await pool.query(
       `UPDATE pool_bookings
-       SET requester=$1, email=$2, type_of_use=$3, participants=$4, supervisors=$5, date=$6, start_time=$7, finish_time=$8,
-           risk_file=COALESCE($9, risk_file), equipment=$10, equipment_other=$11, notes=$12, status='pending', feedback=''
+       SET requester=$1,email=$2,type_of_use=$3,participants=$4,supervisors=$5,date=$6,start_time=$7,finish_time=$8,
+           risk_file=COALESCE($9,risk_file),equipment=$10,equipment_other=$11,notes=$12,status='pending',feedback=''
        WHERE id=$13`,
-      [
-        requester,
-        email,
-        finalType,
-        participants || null,
-        supervisors || null,
-        date || null,
-        start_time || null,
-        finish_time || null,
-        newRiskFile,
-        finalEquipment,
-        equipment_other || "",
-        notes || "",
-        id,
-      ]
+      [requester, email, finalType, participants || null, supervisors || null, date, start_time || null, finish_time || null, newRiskFile, finalEquipment, equipment_other || "", notes || "", id]
     );
 
     res.redirect("/my-bookings?email=" + encodeURIComponent(email) + "&code=" + encodeURIComponent(access_code));
   } catch (err) {
-    console.error("Error POST /edit-booking/:id:", err);
+    console.error("[ERROR POST /edit-booking/:id]", err);
     res.status(500).send("Error updating booking");
   }
 });
@@ -266,7 +240,7 @@ router.post("/edit-booking/:id", upload.single("risk_file"), async (req, res) =>
 // -------------------
 router.get("/admin/login", (req, res) => {
   if (req.session.admin) return res.redirect("/admin");
-  res.render("admin", { error: "", session: req.session, pending: [], approved: [], rejected: [] });
+  res.render("admin", { error: "", session: req.session, pending: [], approved: [], rejected: [], bucketName });
 });
 
 router.post("/admin/login", (req, res) => {
@@ -278,7 +252,7 @@ router.post("/admin/login", (req, res) => {
     req.session.admin = true;
     res.redirect("/admin");
   } else {
-    res.render("admin", { error: "Invalid username or password", session: req.session, pending: [], approved: [], rejected: [] });
+    res.render("admin", { error: "Invalid username or password", session: req.session, pending: [], approved: [], rejected: [], bucketName });
   }
 });
 
@@ -304,10 +278,11 @@ router.get("/admin", async (req, res) => {
       approved: approvedRes.rows,
       rejected: rejectedRes.rows,
       session: req.session,
-      error: ""
+      error: "",
+      bucketName,
     });
   } catch (err) {
-    console.error("Error GET /admin:", err);
+    console.error("[ERROR GET /admin]", err);
     res.status(500).send("Error loading admin page");
   }
 });
@@ -324,14 +299,14 @@ router.post("/admin/:id/delete", async (req, res) => {
 
     await pool.query(
       `INSERT INTO booking_logs (booking_id, requester, email, type_of_use, date, action)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+       VALUES ($1,$2,$3,$4,$5,$6)`,
       [booking.id, booking.requester, booking.email, booking.type_of_use, booking.date, "deleted"]
     );
 
     await pool.query("DELETE FROM pool_bookings WHERE id=$1", [id]);
     res.redirect("/admin");
   } catch (err) {
-    console.error("Error POST /admin/:id/delete:", err);
+    console.error("[ERROR POST /admin/:id/delete]", err);
     res.status(500).send("Error deleting booking");
   }
 });
@@ -346,7 +321,7 @@ router.post("/admin/:id/feedback", async (req, res) => {
     await pool.query("UPDATE pool_bookings SET feedback=$1 WHERE id=$2", [feedback, id]);
     res.redirect("/admin");
   } catch (err) {
-    console.error("Error POST /admin/:id/feedback:", err);
+    console.error("[ERROR POST /admin/:id/feedback]", err);
     res.status(500).send("Error saving feedback");
   }
 });
@@ -362,8 +337,36 @@ router.post("/admin/:id/:action", async (req, res) => {
     await pool.query("UPDATE pool_bookings SET status=$1, approved_at=$2 WHERE id=$3", [action, approved_at, id]);
     res.redirect("/admin");
   } catch (err) {
-    console.error("Error POST /admin/:id/:action:", err);
+    console.error("[ERROR POST /admin/:id/:action]", err);
     res.status(500).send("Error updating booking");
+  }
+});
+
+// -------------------
+// Download file from Supabase
+// -------------------
+router.get("/download/:filename", async (req, res) => {
+  const { filename } = req.params;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .download(filename);
+
+    if (error || !data) {
+      console.error("[ERROR GET /download/:filename]", error);
+      return res.status(404).send("File not found");
+    }
+
+    const arrayBuffer = await data.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.send(buffer);
+  } catch (err) {
+    console.error("[ERROR GET /download/:filename]", err);
+    res.status(500).send("Error downloading file");
   }
 });
 

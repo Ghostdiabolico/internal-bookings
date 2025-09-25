@@ -1,5 +1,6 @@
 <nav class="navbar">
-  <div class="container" style="display:flex; gap:12px; align-items:center; justify-content:center;">
+  <div class="container" style="display:flex; gap:12px; align-items:center; justify-content:center; position:relative;">
+    <!-- Navigation links -->
     <a href="/" class="nav-btn">Home</a>
     <a href="/form" class="nav-btn">Request Booking</a>
     <a href="/calendar" class="nav-btn">Approved Bookings</a>
@@ -9,5 +10,10 @@
     <% if (session && session.admin) { %>
       <a href="/admin/logout" class="nav-btn logout-btn">Logout</a>
     <% } %>
+
+    <!-- Logo on the right -->
+    <a href="/" class="nav-logo" style="margin-left:auto;">
+      <img src="/images/logo.jpg" alt="Logo" style="height:40px; width:auto;">
+    </a>
   </div>
 </nav>

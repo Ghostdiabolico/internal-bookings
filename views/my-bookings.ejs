@@ -10,79 +10,95 @@
 </head>
 <body>
 <div class="container mt-4">
-  <h1>My Pool Bookings</h1>
+  <h1>My Bookings</h1>
 
-  <!-- Lookup form -->
-  <form method="GET" action="/my-bookings" class="mb-2">
-    <div class="row g-2">
-      <div class="col-md-5">
-        <input type="email" class="form-control" name="email" placeholder="Enter your email" value="<%= email || '' %>" required>
-      </div>
-      <div class="col-md-5">
-        <input type="text" class="form-control" name="code" placeholder="Enter your access code" value="<%= code || '' %>" required>
-      </div>
-      <div class="col-md-2">
-        <button type="submit" class="btn btn-primary w-100">Check Status</button>
-      </div>
-    </div>
-  </form>
-
-  <!-- Forgot code button -->
-  <form method="GET" action="/my-bookings" class="mb-4">
-    <input type="hidden" name="send_code" value="1">
-    <div class="row g-2">
-      <div class="col-md-10">
-        <input type="email" class="form-control" name="email" placeholder="Enter your email to recover code" value="<%= email || '' %>" required>
-      </div>
-      <div class="col-md-2">
-        <button type="submit" class="btn btn-outline-secondary w-100">Forgot Access Code?</button>
-      </div>
-    </div>
-  </form>
-
-  <!-- Display message from server (code sent, no booking, etc.) -->
   <% if (message) { %>
     <div class="alert alert-info"><%= message %></div>
   <% } %>
 
-  <% if (bookings && bookings.length > 0) { %>
-    <table class="table table-bordered table-striped">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Time</th>
-          <th>Type of Use</th>
-          <th>Participants</th>
-          <th>Supervisors</th>
-          <th>Status</th>
-          <th>Feedback</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% bookings.forEach(booking => { %>
+  <form method="GET" action="/my-bookings" class="row g-3 mb-4">
+    <div class="col-md-4">
+      <input type="email" class="form-control" name="email" placeholder="Your Email" value="<%= email %>" required>
+    </div>
+    <div class="col-md-4">
+      <input type="text" class="form-control" name="code" placeholder="Access Code" value="<%= code %>">
+    </div>
+    <div class="col-md-4">
+      <button type="submit" class="btn btn-primary">View Bookings</button>
+      <button type="submit" name="send_code" value="1" class="btn btn-secondary">Send Latest Access Code</button>
+    </div>
+  </form>
+
+  <% if (bookings.length > 0) { %>
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped">
+        <thead class="table-dark">
           <tr>
-            <td><%= new Date(booking.date).toISOString().split('T')[0] %></td>
-            <td><%= booking.start_time %> - <%= booking.finish_time %></td>
-            <td><%= booking.type_of_use %></td>
-            <td><%= booking.participants || '-' %></td>
-            <td><%= booking.supervisors || '-' %></td>
-            <td><%= booking.status %></td>
-            <td><%= booking.feedback || '-' %></td>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Requester</th>
             <td>
-              <% if (booking.status === 'rejected') { %>
-                <a href="/edit-booking/<%= booking.id %>" class="btn btn-sm btn-warning">Edit</a>
-              <% } else { %>
-                -
-              <% } %>
-            </td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  <% } else if (email && code) { %>
-    <div class="alert alert-info">No bookings found for the provided email and access code.</div>
+  <% if (b.type_of_use === "Other" && b.type_of_use_other) { %>
+    <%= b.type_of_use_other %>
+  <% } else { %>
+    <%= b.type_of_use %>
   <% } %>
+</td>
+
+            <th>Participants</th>
+            <th>Supervisors</th>
+            <th>Equipment</th>
+            <th>Notes</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% bookings.forEach(b => { %>
+            <tr>
+              <td><%= b.date %></td>
+              <td><%= b.start_time %> - <%= b.finish_time %></td>
+              <td><%= b.requester %></td>
+              <td><%= b.type_of_use %></td>
+              <td><%= b.participants || "-" %></td>
+              <td><%= b.supervisors || "-" %></td>
+              <td>
+                <% if (b.equipment && b.equipment.length > 0) { %>
+                  <ul class="mb-0">
+                    <% b.equipment.forEach(eq => { %>
+                      <li><%= eq %></li>
+                    <% }) %>
+                  </ul>
+                <% } else { %>
+                  -
+                <% } %>
+              </td>
+              <td><%= b.notes || "-" %></td>
+              <td>
+                <% if (b.status === "pending") { %>
+                  <span class="badge bg-warning text-dark">Pending</span>
+                <% } else if (b.status === "approved") { %>
+                  <span class="badge bg-success">Approved</span>
+                <% } else if (b.status === "rejected") { %>
+                  <span class="badge bg-danger">Rejected</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (b.status === "rejected") { %>
+                  <a href="/edit-booking/<%= b.id %>" class="btn btn-sm btn-outline-primary">Edit</a>
+                <% } else { %>
+                  -
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <p>No bookings found.</p>
+  <% } %>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -1,3 +1,7 @@
+// Permette a Node di ignorare certificati self-signed (solo sviluppo)
+//process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
+
 import express from "express";
 import session from "express-session";
 import dotenv from "dotenv";
@@ -18,6 +22,10 @@ app.set("view engine", "ejs");
 app.set("views", path.join(process.cwd(), "views"));
 
 app.use(express.static(path.join(process.cwd(), "public")));
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
