@@ -89,6 +89,7 @@
             <th>Event Name</th>
             <th>Equipment</th>
             <th>Other Activities</th>
+            <th>Risk File</th>
             <th>Notes</th>
             <th>Status</th>
             <% if(title === "Approved Bookings") { %><th>Approved At</th><% } %>
@@ -122,6 +123,11 @@
                 <% } else { %>-<% } %>
               </td>
               <td><%= b.other_activities || "-" %></td>
+              <td>
+                <% if (b.risk_file) { %>
+                  <a href="/download/<%= b.risk_file %>" class="btn btn-sm btn-outline-primary">Download</a>
+                <% } else { %>-<% } %>
+              </td>
               <td><%= b.notes || "-" %></td>
               <td>
                 <% if(b.status === 'pending') { %>

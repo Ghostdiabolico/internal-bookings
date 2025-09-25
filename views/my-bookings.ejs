@@ -37,14 +37,7 @@
             <th>Date</th>
             <th>Time</th>
             <th>Requester</th>
-            <td>
-  <% if (b.type_of_use === "Other" && b.type_of_use_other) { %>
-    <%= b.type_of_use_other %>
-  <% } else { %>
-    <%= b.type_of_use %>
-  <% } %>
-</td>
-
+            <th>Type of Use</th>
             <th>Participants</th>
             <th>Supervisors</th>
             <th>Equipment</th>
@@ -59,7 +52,13 @@
               <td><%= b.date %></td>
               <td><%= b.start_time %> - <%= b.finish_time %></td>
               <td><%= b.requester %></td>
-              <td><%= b.type_of_use %></td>
+              <td>
+                <% if (b.type_of_use === "Other" && b.type_of_use_other) { %>
+                  <%= b.type_of_use_other %>
+                <% } else { %>
+                  <%= b.type_of_use %>
+                <% } %>
+              </td>
               <td><%= b.participants || "-" %></td>
               <td><%= b.supervisors || "-" %></td>
               <td>
