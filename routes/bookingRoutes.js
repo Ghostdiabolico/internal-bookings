@@ -50,16 +50,8 @@ router.post("/form", upload.single("risk_file"), async (req, res) => {
     let risk_file = null;
     if (req.file) {
       const filename = Date.now() + path.extname(req.file.originalname);
-      console.log("[UPLOAD] Trying to upload file to Supabase:", filename);
-
-      const { error } = await supabase.storage
-        .from(bucketName)
-        .upload(filename, req.file.buffer, { upsert: true });
-
-      if (error) {
-        console.error("[SUPABASE UPLOAD ERROR]", error);
-        throw error;
-      }
+      const { error } = await supabase.storage.from(bucketName).upload(filename, req.file.buffer, { upsert: true });
+      if (error) throw error;
       risk_file = filename;
     }
 
@@ -168,7 +160,6 @@ router.get("/my-bookings", async (req, res) => {
     res.status(500).send("Error loading bookings");
   }
 });
-
 // -------------------
 // Edit Booking
 // -------------------
@@ -272,11 +263,13 @@ router.get("/admin", async (req, res) => {
     const pendingRes = await pool.query("SELECT * FROM pool_bookings WHERE status='pending' ORDER BY created_at DESC");
     const approvedRes = await pool.query("SELECT * FROM pool_bookings WHERE status='approved' ORDER BY date,start_time");
     const rejectedRes = await pool.query("SELECT * FROM pool_bookings WHERE status='rejected' ORDER BY date,start_time");
+    const deletedRes = await pool.query("SELECT * FROM booking_logs ORDER BY deleted_at DESC");
 
     res.render("admin", {
       pending: pendingRes.rows,
       approved: approvedRes.rows,
       rejected: rejectedRes.rows,
+      deleted: deletedRes.rows,
       session: req.session,
       error: "",
       bucketName,
@@ -292,15 +285,17 @@ router.get("/admin", async (req, res) => {
 // -------------------
 router.post("/admin/:id/delete", async (req, res) => {
   const { id } = req.params;
+  if (!req.session.admin) return res.status(403).send("Unauthorized");
+
   try {
     const bookingRes = await pool.query("SELECT * FROM pool_bookings WHERE id=$1", [id]);
     const booking = bookingRes.rows[0];
     if (!booking) return res.status(404).send("Booking not found");
 
     await pool.query(
-      `INSERT INTO booking_logs (booking_id, requester, email, type_of_use, date, action)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [booking.id, booking.requester, booking.email, booking.type_of_use, booking.date, "deleted"]
+      `INSERT INTO booking_logs (booking_id, requester, email, type_of_use, deleted_at, deleted_by, action)
+       VALUES ($1,$2,$3,$4,NOW(),$5,'deleted')`,
+      [booking.id, booking.requester, booking.email, booking.type_of_use, req.session.admin ? 'Admin' : 'Unknown']
     );
 
     await pool.query("DELETE FROM pool_bookings WHERE id=$1", [id]);
@@ -331,7 +326,9 @@ router.post("/admin/:id/feedback", async (req, res) => {
 // -------------------
 router.post("/admin/:id/:action", async (req, res) => {
   const { id, action } = req.params;
+  if (!req.session.admin) return res.status(403).send("Unauthorized");
   if (!["approved", "rejected"].includes(action)) return res.status(400).send("Invalid action");
+
   try {
     const approved_at = action === "approved" ? new Date().toISOString() : null;
     await pool.query("UPDATE pool_bookings SET status=$1, approved_at=$2 WHERE id=$3", [action, approved_at, id]);
@@ -349,9 +346,7 @@ router.get("/download/:filename", async (req, res) => {
   const { filename } = req.params;
 
   try {
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .download(filename);
+    const { data, error } = await supabase.storage.from(bucketName).download(filename);
 
     if (error || !data) {
       console.error("[ERROR GET /download/:filename]", error);

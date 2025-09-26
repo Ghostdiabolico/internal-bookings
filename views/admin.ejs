@@ -89,7 +89,6 @@
             <th>Event Name</th>
             <th>Equipment</th>
             <th>Other Activities</th>
-            <th>Risk File</th>
             <th>Notes</th>
             <th>Status</th>
             <% if(title === "Approved Bookings") { %><th>Approved At</th><% } %>
@@ -123,11 +122,6 @@
                 <% } else { %>-<% } %>
               </td>
               <td><%= b.other_activities || "-" %></td>
-              <td>
-                <% if (b.risk_file) { %>
-                  <a href="/download/<%= b.risk_file %>" class="btn btn-sm btn-outline-primary">Download</a>
-                <% } else { %>-<% } %>
-              </td>
               <td><%= b.notes || "-" %></td>
               <td>
                 <% if(b.status === 'pending') { %>
@@ -170,6 +164,41 @@
     <% renderTable(pending, "Pending Bookings") %>
     <% renderTable(approved, "Approved Bookings") %>
     <% renderTable(rejected, "Rejected Bookings") %>
+
+    <!-- Deleted Bookings Table for Admin Only -->
+    <% if (deleted && deleted.length > 0) { %>
+      <h3 class="mt-4">Deleted Bookings (<%= deleted.length %>)</h3>
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered align-middle">
+          <thead class="table-danger">
+            <tr>
+              <th>ID</th>
+              <th>Booking ID</th>
+              <th>Requester</th>
+              <th>Email</th>
+              <th>Type</th>
+              <th>Deleted At</th>
+              <th>Deleted By</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% deleted.forEach(b => { %>
+              <tr>
+                <td><%= b.id %></td>
+                <td><%= b.booking_id %></td>
+                <td><%= b.requester %></td>
+                <td><%= b.email %></td>
+                <td><%= b.type_of_use %></td>
+                <td><%= b.deleted_at ? new Date(b.deleted_at).toLocaleString() : "-" %></td>
+                <td><%= b.deleted_by %></td>
+                <td><%= b.action %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
 
   </div>
 
