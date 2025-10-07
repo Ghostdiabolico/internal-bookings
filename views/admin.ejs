@@ -8,12 +8,9 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/styles/main.css">
   <style>
-    .table td, .table th {
-      white-space: nowrap;
-    }
-    .feedback-input {
-      min-width: 150px;
-    }
+    .table td, .table th { white-space: nowrap; }
+    .feedback-input { min-width: 150px; }
+    .table-container { max-height: 400px; overflow-y: auto; margin-bottom: 30px; }
   </style>
 </head>
 <body>
@@ -21,9 +18,7 @@
 <% if (!session.admin) { %>
   <div class="container mt-4">
     <h1>Admin Login</h1>
-    <% if (error) { %>
-      <div class="alert alert-danger"><%= error %></div>
-    <% } %>
+    <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
     <form method="POST" action="/admin/login">
       <div class="mb-3">
         <label for="username" class="form-label">Username</label>
@@ -38,169 +33,204 @@
   </div>
 <% } else { %>
 
-  <div class="container-fluid mt-2">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h1>Admin Panel</h1>
-      <a href="/admin/logout" class="btn btn-outline-danger">Logout</a>
-    </div>
-
-    <%
-      function formatTime(t) {
-        if (!t) return "";
-        let d = new Date("1970-01-01T" + t);
-        let hours = d.getHours();
-        let minutes = d.getMinutes().toString().padStart(2,"0");
-        let ampm = hours >= 12 ? "PM" : "AM";
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-        return `${hours}:${minutes} ${ampm}`;
-      }
-
-      function formatApprovedAt(dt) {
-        if (!dt) return "";
-        let d = new Date(dt);
-        let day = d.getDate().toString().padStart(2,"0");
-        let month = (d.getMonth()+1).toString().padStart(2,"0");
-        let year = d.getFullYear();
-        let hours = d.getHours();
-        let minutes = d.getMinutes().toString().padStart(2,"0");
-        let ampm = hours >= 12 ? "PM" : "AM";
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-        return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
-      }
-
-      function renderTable(bookings, title) {
-    %>
-      <h3 class="mt-4"><%= title %> (<%= bookings.length %>)</h3>
-      <div class="table-responsive">
-      <table class="table table-striped table-bordered align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Requester</th>
-            <th>Email</th>
-            <th>Type</th>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Participants</th>
-            <th>Age Range</th>
-            <th>Supervisors</th>
-            <th>Event Name</th>
-            <th>Equipment</th>
-            <th>Other Activities</th>
-            <th>Notes</th>
-            <th>Status</th>
-            <% if(title === "Approved Bookings") { %><th>Approved At</th><% } %>
-            <th>Feedback</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% bookings.forEach(b => { %>
-            <tr>
-              <td><%= b.id %></td>
-              <td><%= b.requester %></td>
-              <td><%= b.email %></td>
-              <td><% if (b.type_of_use === "Other" && b.type_of_use_other) { %> <%= b.type_of_use_other %>
-  <% } else { %>
-    <%= b.type_of_use %>
-  <% } %>
-</td>
-
-              <td><%= b.date ? new Date(b.date).toISOString().split("T")[0] : "" %></td>
-              <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
-              <td><%= b.participants || "-" %></td>
-              <td><%= b.age_range || "-" %></td>
-              <td><%= b.supervisors || "-" %></td>
-              <td><%= b.event_name || "-" %></td>
-              <td>
-                <% if (b.equipment && b.equipment.length > 0) { %>
-                  <ul class="mb-0">
-                    <% b.equipment.forEach(eq => { %><li><%= eq %></li><% }) %>
-                  </ul>
-                <% } else { %>-<% } %>
-              </td>
-              <td><%= b.other_activities || "-" %></td>
-              <td><%= b.notes || "-" %></td>
-              <td>
-                <% if(b.status === 'pending') { %>
-                  <span class="badge bg-warning text-dark">Pending</span>
-                <% } else if(b.status === 'approved') { %>
-                  <span class="badge bg-success">Approved</span>
-                <% } else if(b.status === 'rejected') { %>
-                  <span class="badge bg-danger">Rejected</span>
-                <% } %>
-              </td>
-              <% if(title === "Approved Bookings") { %>
-                <td><%= formatApprovedAt(b.approved_at) %></td>
-              <% } %>
-              <td>
-                <form method="POST" action="/admin/<%= b.id %>/feedback" class="d-flex">
-                  <input type="text" name="feedback" value="<%= b.feedback %>" class="form-control form-control-sm me-1 feedback-input">
-                  <button type="submit" class="btn btn-sm btn-primary">Save</button>
-                </form>
-              </td>
-              <td>
-                <% if(b.status === 'pending') { %>
-                  <form method="POST" action="/admin/<%= b.id %>/approved" class="d-inline">
-                    <button type="submit" class="btn btn-success btn-sm mb-1">Approve</button>
-                  </form>
-                  <form method="POST" action="/admin/<%= b.id %>/rejected" class="d-inline">
-                    <button type="submit" class="btn btn-warning btn-sm mb-1">Reject</button>
-                  </form>
-                <% } %>
-                <form method="POST" action="/admin/<%= b.id %>/delete" class="d-inline">
-                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this booking?');">Delete</button>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-      </div>
-    <% } %>
-
-    <% renderTable(pending, "Pending Bookings") %>
-    <% renderTable(approved, "Approved Bookings") %>
-    <% renderTable(rejected, "Rejected Bookings") %>
-
-    <!-- Deleted Bookings Table for Admin Only -->
-    <% if (deleted && deleted.length > 0) { %>
-      <h3 class="mt-4">Deleted Bookings (<%= deleted.length %>)</h3>
-      <div class="table-responsive">
-        <table class="table table-striped table-bordered align-middle">
-          <thead class="table-danger">
-            <tr>
-              <th>ID</th>
-              <th>Booking ID</th>
-              <th>Requester</th>
-              <th>Email</th>
-              <th>Type</th>
-              <th>Deleted At</th>
-              <th>Deleted By</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% deleted.forEach(b => { %>
-              <tr>
-                <td><%= b.id %></td>
-                <td><%= b.booking_id %></td>
-                <td><%= b.requester %></td>
-                <td><%= b.email %></td>
-                <td><%= b.type_of_use %></td>
-                <td><%= b.deleted_at ? new Date(b.deleted_at).toLocaleString() : "-" %></td>
-                <td><%= b.deleted_by %></td>
-                <td><%= b.action %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
-    <% } %>
-
+<div class="container-fluid mt-2">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Admin Panel</h1>
+    <a href="/admin/logout" class="btn btn-outline-danger">Logout</a>
   </div>
+
+  <% 
+    function formatTime(t) {
+      if (!t) return "";
+      let [h,m] = t.split(":");
+      return `${h.padStart(2,"0")}:${m.padStart(2,"0")}`;
+    }
+    function formatDate(dt) {
+      if (!dt) return "";
+      let d = new Date(dt);
+      return d.toISOString().split("T")[0];
+    }
+  %>
+
+  <!-- PENDING -->
+  <h3>Pending Bookings (<%= pending.length %>)</h3>
+  <div class="table-container">
+    <table class="table table-striped table-bordered align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th><th>Requester</th><th>Email</th><th>Type</th><th>Date</th><th>Time</th>
+          <th>Participants</th><th>Supervisors</th><th>Equipment</th><th>Notes</th>
+          <th>Submitted At</th><th>Risk File</th><th>Feedback</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% pending.forEach(b => { %>
+        <tr>
+          <td><%= b.id %></td>
+          <td><%= b.requester %></td>
+          <td><%= b.email %></td>
+          <td><%= b.type_of_use === "Other" && b.type_of_use_other ? b.type_of_use_other : b.type_of_use %></td>
+          <td><%= formatDate(b.date) %></td>
+          <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
+          <td><%= b.participants || "-" %></td>
+          <td><%= b.supervisors || "-" %></td>
+          <td>
+            <% if (b.equipment && b.equipment.length>0) { %>
+              <ul class="mb-0"><% b.equipment.forEach(eq => { %><li><%= eq %></li><% }) %></ul>
+            <% } else { %>-<% } %>
+          </td>
+          <td><%= b.notes || "-" %></td>
+          <td><%= formatDate(b.created_at) %></td>
+          <td>
+            <% if (b.risk_file) { %>
+              <a href="/download/<%= b.risk_file %>">Download</a>
+            <% } else { %>-<% } %>
+          </td>
+          <td>
+            <form method="POST" action="/admin/<%= b.id %>/feedback" class="d-flex">
+              <input type="text" name="feedback" value="<%= b.feedback %>" class="form-control form-control-sm me-1 feedback-input">
+              <button type="submit" class="btn btn-sm btn-primary">Save</button>
+            </form>
+          </td>
+          <td>
+            <form method="POST" action="/admin/<%= b.id %>/approved" class="d-inline">
+              <button type="submit" class="btn btn-success btn-sm mb-1">Approve</button>
+            </form>
+            <form method="POST" action="/admin/<%= b.id %>/rejected" class="d-inline">
+              <button type="submit" class="btn btn-warning btn-sm mb-1">Reject</button>
+            </form>
+            <form method="POST" action="/admin/<%= b.id %>/delete" class="d-inline">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?');">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- APPROVED -->
+  <h3>Approved Bookings (<%= approved.length %>)</h3>
+  <div class="table-container">
+    <table class="table table-striped table-bordered align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th><th>Requester</th><th>Email</th><th>Type</th><th>Date</th><th>Time</th>
+          <th>Participants</th><th>Supervisors</th><th>Equipment</th><th>Notes</th>
+          <th>Submitted At</th><th>Risk File</th><th>Feedback</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% approved.forEach(b => { %>
+        <tr>
+          <td><%= b.id %></td>
+          <td><%= b.requester %></td>
+          <td><%= b.email %></td>
+          <td><%= b.type_of_use === "Other" && b.type_of_use_other ? b.type_of_use_other : b.type_of_use %></td>
+          <td><%= formatDate(b.date) %></td>
+          <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
+          <td><%= b.participants || "-" %></td>
+          <td><%= b.supervisors || "-" %></td>
+          <td>
+            <% if (b.equipment && b.equipment.length>0) { %>
+              <ul class="mb-0"><% b.equipment.forEach(eq => { %><li><%= eq %></li><% }) %></ul>
+            <% } else { %>-<% } %>
+          </td>
+          <td><%= b.notes || "-" %></td>
+          <td><%= formatDate(b.created_at) %></td>
+          <td>
+            <% if (b.risk_file) { %>
+              <a href="/download/<%= b.risk_file %>">Download</a>
+            <% } else { %>-<% } %>
+          </td>
+          <td><%= b.feedback || "-" %></td>
+          <td>
+            <form method="POST" action="/admin/<%= b.id %>/rejected" class="d-inline">
+              <button type="submit" class="btn btn-warning btn-sm mb-1">Reject</button>
+            </form>
+            <form method="POST" action="/admin/<%= b.id %>/delete" class="d-inline">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?');">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- REJECTED -->
+  <h3>Rejected Bookings (<%= rejected.length %>)</h3>
+  <div class="table-container">
+    <table class="table table-striped table-bordered align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th><th>Requester</th><th>Email</th><th>Type</th><th>Date</th><th>Time</th>
+          <th>Participants</th><th>Supervisors</th><th>Equipment</th><th>Notes</th>
+          <th>Submitted At</th><th>Risk File</th><th>Feedback</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rejected.forEach(b => { %>
+        <tr>
+          <td><%= b.id %></td>
+          <td><%= b.requester %></td>
+          <td><%= b.email %></td>
+          <td><%= b.type_of_use === "Other" && b.type_of_use_other ? b.type_of_use_other : b.type_of_use %></td>
+          <td><%= formatDate(b.date) %></td>
+          <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
+          <td><%= b.participants || "-" %></td>
+          <td><%= b.supervisors || "-" %></td>
+          <td>
+            <% if (b.equipment && b.equipment.length>0) { %>
+              <ul class="mb-0"><% b.equipment.forEach(eq => { %><li><%= eq %></li><% }) %></ul>
+            <% } else { %>-<% } %>
+          </td>
+          <td><%= b.notes || "-" %></td>
+          <td><%= formatDate(b.created_at) %></td>
+          <td>
+            <% if (b.risk_file) { %>
+              <a href="/download/<%= b.risk_file %>">Download</a>
+            <% } else { %>-<% } %>
+          </td>
+          <td><%= b.feedback || "-" %></td>
+          <td>
+            <form method="POST" action="/admin/<%= b.id %>/delete" class="d-inline">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?');">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DELETED -->
+  <h3>Deleted Booking Logs (<%= deleted.length %>)</h3>
+  <div class="table-container">
+    <table class="table table-striped table-bordered align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Booking ID</th><th>Requester</th><th>Email</th><th>Type</th>
+          <th>Deleted At</th><th>Deleted By</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% deleted.forEach(b => { %>
+        <tr>
+          <td><%= b.booking_id %></td>
+          <td><%= b.requester %></td>
+          <td><%= b.email %></td>
+          <td><%= b.type_of_use %></td>
+          <td><%= formatDate(b.deleted_at) %></td>
+          <td><%= b.deleted_by %></td>
+          <td><%= b.action %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+</div>
 
 <% } %>
 
