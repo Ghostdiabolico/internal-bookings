@@ -1,19 +1,91 @@
 <nav class="navbar">
-  <div class="container" style="display:flex; gap:12px; align-items:center; justify-content:center; position:relative;">
-    <!-- Navigation links -->
-    <a href="/" class="nav-btn">Home</a>
-    <a href="/form" class="nav-btn">Request Booking</a>
-    <a href="/calendar" class="nav-btn">Approved Bookings</a>
-    <a href="/my-bookings" class="nav-btn">My Bookings</a>
-    <a href="/admin" class="nav-btn">Admin</a>
-
-    <% if (session && session.admin) { %>
-      <a href="/admin/logout" class="nav-btn logout-btn">Logout</a>
-    <% } %>
-
-    <!-- Logo on the right -->
-    <a href="/" class="nav-logo" style="margin-left:auto;">
-      <img src="/images/logo.jpg" alt="Logo" style="height:40px; width:auto;">
+  <div class="container">
+    <!-- Logo on the left -->
+    <a href="/" class="navbar-brand">
+      <img src="/images/logo.jpg" alt="Pool Booking Logo" class="nav-logo">
+      <span class="brand-text">Pool Booking</span>
     </a>
+
+    <!-- Hamburger menu for mobile -->
+    <button class="navbar-toggler" id="navbarToggler" aria-label="Toggle navigation">
+      <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Navigation links -->
+    <div class="navbar-menu" id="navbarMenu">
+      <a href="/" class="nav-link <%= currentPage === 'home' ? 'active' : '' %>">
+        <i class="bi bi-house-door"></i>
+        <span>Home</span>
+      </a>
+
+      <% if (session && session.userId) { %>
+        <!-- Logged in user navigation -->
+        <a href="/form" class="nav-link <%= currentPage === 'form' ? 'active' : '' %>">
+          <i class="bi bi-calendar-plus"></i>
+          <span>Request Booking</span>
+        </a>
+        <a href="/calendar" class="nav-link <%= currentPage === 'calendar' ? 'active' : '' %>">
+          <i class="bi bi-calendar-check"></i>
+          <span>Approved Bookings</span>
+        </a>
+        <a href="/my-bookings" class="nav-link <%= currentPage === 'my-bookings' ? 'active' : '' %>">
+          <i class="bi bi-bookmark"></i>
+          <span>My Bookings</span>
+        </a>
+        
+        <!-- User welcome & logout -->
+        <div class="nav-link" style="cursor: default; background: rgba(255, 255, 255, 0.15);">
+          <i class="bi bi-person-circle"></i>
+          <span>Welcome, <%= session.username %></span>
+        </div>
+        <a href="/logout" class="nav-link logout-btn">
+          <i class="bi bi-box-arrow-right"></i>
+          <span>Logout</span>
+        </a>
+      <% } else { %>
+        <!-- Guest navigation -->
+        <a href="/calendar" class="nav-link <%= currentPage === 'calendar' ? 'active' : '' %>">
+          <i class="bi bi-calendar-check"></i>
+          <span>Approved Bookings</span>
+        </a>
+        <a href="/login" class="nav-link <%= currentPage === 'login' ? 'active' : '' %>">
+          <i class="bi bi-box-arrow-in-right"></i>
+          <span>Login</span>
+        </a>
+        <a href="/register" class="nav-link <%= currentPage === 'register' ? 'active' : '' %>" style="background: rgba(255, 255, 255, 0.25);">
+          <i class="bi bi-person-plus"></i>
+          <span>Register</span>
+        </a>
+      <% } %>
+
+      <!-- Admin link (always visible) -->
+      <a href="/admin" class="nav-link <%= currentPage === 'admin' ? 'active' : '' %>">
+        <i class="bi bi-shield-lock"></i>
+        <span>Admin</span>
+      </a>
+    </div>
   </div>
 </nav>
+
+<script>
+// Mobile menu toggle
+document.addEventListener('DOMContentLoaded', function() {
+  const toggler = document.getElementById('navbarToggler');
+  const menu = document.getElementById('navbarMenu');
+  
+  if (toggler && menu) {
+    toggler.addEventListener('click', function() {
+      menu.classList.toggle('active');
+      toggler.classList.toggle('active');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function(event) {
+      if (!event.target.closest('.navbar')) {
+        menu.classList.remove('active');
+        toggler.classList.remove('active');
+      }
+    });
+  }
+});
+</script>

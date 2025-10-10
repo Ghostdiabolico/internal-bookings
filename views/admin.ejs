@@ -1,239 +1,739 @@
-<%- include('partials/navbar') %>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Booking Management</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="/styles/main.css">
   <style>
-    .table td, .table th { white-space: nowrap; }
-    .feedback-input { min-width: 150px; }
-    .table-container { max-height: 400px; overflow-y: auto; margin-bottom: 30px; }
+    .table td, .table th { 
+      white-space: nowrap; 
+      vertical-align: middle;
+    }
+    .feedback-input { 
+      min-width: 150px; 
+    }
+    .table-container { 
+      max-height: 500px; 
+      overflow-y: auto; 
+      margin-bottom: 30px;
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+    }
+    .table-container::-webkit-scrollbar {
+      width: 8px;
+    }
+    .table-container::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    .table-container::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+    .table-container::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    .status-badge {
+      font-size: 0.875rem;
+      padding: 0.35em 0.65em;
+    }
+    .booking-count {
+      background-color: #6c757d;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.9rem;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    @media (min-width: 768px) {
+      .action-buttons {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+    }
+    .equipment-list {
+      margin-bottom: 0;
+      padding-left: 1.2rem;
+      font-size: 0.9rem;
+    }
+    .table-responsive {
+      overflow-x: auto;
+    }
+    /* Purple gradient header for User Management */
+    .gradient-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
   </style>
 </head>
 <body>
 
+<%- include('partials/navbar') %>
+
 <% if (!session.admin) { %>
-  <div class="container mt-4">
-    <h1>Admin Login</h1>
-    <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
-    <form method="POST" action="/admin/login">
-      <div class="mb-3">
-        <label for="username" class="form-label">Username</label>
-        <input type="text" id="username" name="username" class="form-control" required>
+  <!-- Login Form -->
+  <div class="container mt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+          <div class="card-body">
+            <h2 class="card-title text-center mb-4">
+              <i class="bi bi-shield-lock"></i> Admin Login
+            </h2>
+            
+            <% if (error) { %>
+              <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i> <%= error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            <% } %>
+            
+            <form method="POST" action="/admin/login" id="loginForm">
+              <div class="mb-3">
+                <label for="username" class="form-label">
+                  <i class="bi bi-person"></i> Username
+                </label>
+                <input type="text" id="username" name="username" class="form-control" required autocomplete="username">
+              </div>
+              
+              <div class="mb-3">
+                <label for="password" class="form-label">
+                  <i class="bi bi-key"></i> Password
+                </label>
+                <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password">
+              </div>
+              
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-box-arrow-in-right"></i> Login
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
-      <div class="mb-3">
-        <label for="password" class="form-label">Password</label>
-        <input type="password" id="password" name="password" class="form-control" required>
-      </div>
-      <button type="submit" class="btn btn-primary">Login</button>
-    </form>
+    </div>
   </div>
+
 <% } else { %>
 
-<div class="container-fluid mt-2">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Admin Panel</h1>
-    <a href="/admin/logout" class="btn btn-outline-danger">Logout</a>
+  <!-- Admin Panel -->
+  <div class="container-fluid mt-3 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="display-6">
+        <i class="bi bi-speedometer2"></i> Admin Panel
+      </h1>
+      <div>
+        <span class="me-3 text-muted">
+          <i class="bi bi-person-circle"></i> <%= session.admin %>
+        </span>
+        <a href="/admin/logout" class="btn btn-outline-danger">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+      </div>
+    </div>
+
+    <% 
+      // Helper functions
+      function formatTime(t) {
+        if (!t) return "-";
+        let [h, m] = t.split(":");
+        return `${h.padStart(2, "0")}:${m.padStart(2, "0")}`;
+      }
+      
+      function formatDate(dt) {
+        if (!dt) return "-";
+        let d = new Date(dt);
+        let options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return d.toLocaleDateString('en-US', options);
+      }
+      
+      function getStatusColor(status) {
+        switch(status) {
+          case 'pending': return 'warning';
+          case 'approved': return 'success';
+          case 'rejected': return 'danger';
+          default: return 'secondary';
+        }
+      }
+    %>
+
+    <!-- USER MANAGEMENT SECTION -->
+    <div class="section-header">
+      <h3><i class="bi bi-people-fill" style="color: #667eea;"></i> User Management</h3>
+      <span class="booking-count" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"><%= users ? users.length : 0 %></span>
+    </div>
+    
+    <% if (users && users.length > 0) { %>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark sticky-top">
+              <tr>
+                <th>Username</th>
+                <th>Full Name</th>
+                <th>Registration Date</th>
+                <th>Last Login</th>
+                <th>Recovery Code</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% users.forEach(user => { %>
+                <tr>
+                  <td><strong><%= user.username %></strong></td>
+                  <td><%= user.full_name %></td>
+                  <td><%= formatDate(user.created_at) %></td>
+                  <td>
+                    <% if (user.last_login) { %>
+                      <%= formatDate(user.last_login) %>
+                    <% } else { %>
+                      <span class="text-muted">Never</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <code class="bg-light px-2 py-1 rounded" style="font-size: 0.85rem;"><%= user.recovery_code %></code>
+                  </td>
+                  <td>
+                    <div class="action-buttons">
+                      <button 
+                        class="btn btn-sm btn-warning" 
+                        onclick="resetUserPassword(<%= user.id %>, '<%= user.username %>')"
+                        title="Reset Password">
+                        <i class="bi bi-key"></i> Reset Password
+                      </button>
+                      <button 
+                        class="btn btn-sm btn-danger" 
+                        onclick="deleteUser(<%= user.id %>, '<%= user.username %>')"
+                        title="Delete User">
+                        <i class="bi bi-trash"></i> Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No users registered yet.
+      </div>
+    <% } %>
+
+    <!-- Pending Bookings -->
+    <div class="section-header mt-4">
+      <h3><i class="bi bi-clock-history text-warning"></i> Pending Bookings</h3>
+      <span class="booking-count bg-warning"><%= pending.length %></span>
+    </div>
+    
+    <% if (pending.length > 0) { %>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark sticky-top">
+              <tr>
+                <th>ID</th>
+                <th>Requester</th>
+                <th>Email</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Participants</th>
+                <th>Supervisors</th>
+                <th>Equipment</th>
+                <th>Notes</th>
+                <th>Submitted</th>
+                <th>Risk File</th>
+                <th>Feedback</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% pending.forEach(b => { %>
+                <tr>
+                  <td><strong>#<%= b.id %></strong></td>
+                  <td><%= b.requester %></td>
+                  <td><a href="mailto:<%= b.email %>"><%= b.email %></a></td>
+                  <td>
+                    <span class="badge bg-info">
+                      <%= b.type_of_use === "Other" && b.type_of_use_other ? b.type_of_use_other : b.type_of_use %>
+                    </span>
+                  </td>
+                  <td><%= formatDate(b.date) %></td>
+                  <td>
+                    <i class="bi bi-clock"></i>
+                    <%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %>
+                  </td>
+                  <td><%= b.participants || "-" %></td>
+                  <td><%= b.supervisors || "-" %></td>
+                  <td>
+                    <% if (b.equipment && b.equipment.length > 0) { %>
+                      <ul class="equipment-list">
+                        <% b.equipment.forEach(eq => { %>
+                          <li><%= eq %></li>
+                        <% }) %>
+                      </ul>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (b.notes) { %>
+                      <span title="<%= b.notes %>">
+                        <%= b.notes.length > 30 ? b.notes.substring(0, 30) + '...' : b.notes %>
+                      </span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td><small><%= formatDate(b.created_at) %></small></td>
+                  <td>
+                    <% if (b.risk_file) { %>
+                      <a href="/download/<%= b.risk_file %>" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-download"></i>
+                      </a>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <form method="POST" action="/admin/<%= b.id %>/feedback" class="d-flex gap-1">
+                      <input type="text" name="feedback" value="<%= b.feedback || '' %>" 
+                             class="form-control form-control-sm feedback-input" 
+                             placeholder="Add feedback...">
+                      <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-save"></i>
+                      </button>
+                    </form>
+                  </td>
+                  <td>
+                    <div class="action-buttons">
+                      <form method="POST" action="/admin/<%= b.id %>/approved" class="d-inline">
+                        <button type="submit" class="btn btn-success btn-sm">
+                          <i class="bi bi-check-circle"></i> Approve
+                        </button>
+                      </form>
+                      <form method="POST" action="/admin/<%= b.id %>/rejected" class="d-inline">
+                        <button type="submit" class="btn btn-warning btn-sm">
+                          <i class="bi bi-x-circle"></i> Reject
+                        </button>
+                      </form>
+                      <button type="button" class="btn btn-danger btn-sm" 
+                              onclick="confirmDelete(<%= b.id %>, '<%= b.requester %>')">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No pending bookings at this time.
+      </div>
+    <% } %>
+
+    <!-- Approved Bookings -->
+    <div class="section-header mt-4">
+      <h3><i class="bi bi-check-circle text-success"></i> Approved Bookings</h3>
+      <span class="booking-count bg-success"><%= approved.length %></span>
+    </div>
+    
+    <% if (approved.length > 0) { %>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark sticky-top">
+              <tr>
+                <th>ID</th>
+                <th>Requester</th>
+                <th>Email</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Participants</th>
+                <th>Supervisors</th>
+                <th>Equipment</th>
+                <th>Notes</th>
+                <th>Submitted</th>
+                <th>Risk File</th>
+                <th>Feedback</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% approved.forEach(b => { %>
+                <tr>
+                  <td><strong>#<%= b.id %></strong></td>
+                  <td><%= b.requester %></td>
+                  <td><a href="mailto:<%= b.email %>"><%= b.email %></a></td>
+                  <td>
+                    <span class="badge bg-info">
+                      <%= b.type_of_use === "Other" && b.type_of_use_other ? b.type_of_use_other : b.type_of_use %>
+                    </span>
+                  </td>
+                  <td><%= formatDate(b.date) %></td>
+                  <td>
+                    <i class="bi bi-clock"></i>
+                    <%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %>
+                  </td>
+                  <td><%= b.participants || "-" %></td>
+                  <td><%= b.supervisors || "-" %></td>
+                  <td>
+                    <% if (b.equipment && b.equipment.length > 0) { %>
+                      <ul class="equipment-list">
+                        <% b.equipment.forEach(eq => { %>
+                          <li><%= eq %></li>
+                        <% }) %>
+                      </ul>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (b.notes) { %>
+                      <span title="<%= b.notes %>">
+                        <%= b.notes.length > 30 ? b.notes.substring(0, 30) + '...' : b.notes %>
+                      </span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td><small><%= formatDate(b.created_at) %></small></td>
+                  <td>
+                    <% if (b.risk_file) { %>
+                      <a href="/download/<%= b.risk_file %>" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-download"></i>
+                      </a>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td><%= b.feedback || "-" %></td>
+                  <td>
+                    <div class="action-buttons">
+                      <form method="POST" action="/admin/<%= b.id %>/rejected" class="d-inline">
+                        <button type="submit" class="btn btn-warning btn-sm">
+                          <i class="bi bi-x-circle"></i> Reject
+                        </button>
+                      </form>
+                      <button type="button" class="btn btn-danger btn-sm" 
+                              onclick="confirmDelete(<%= b.id %>, '<%= b.requester %>')">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No approved bookings.
+      </div>
+    <% } %>
+
+    <!-- Rejected Bookings -->
+    <div class="section-header mt-4">
+      <h3><i class="bi bi-x-circle text-danger"></i> Rejected Bookings</h3>
+      <span class="booking-count bg-danger"><%= rejected.length %></span>
+    </div>
+    
+    <% if (rejected.length > 0) { %>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark sticky-top">
+              <tr>
+                <th>ID</th>
+                <th>Requester</th>
+                <th>Email</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Participants</th>
+                <th>Supervisors</th>
+                <th>Equipment</th>
+                <th>Notes</th>
+                <th>Submitted</th>
+                <th>Risk File</th>
+                <th>Feedback</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% rejected.forEach(b => { %>
+                <tr>
+                  <td><strong>#<%= b.id %></strong></td>
+                  <td><%= b.requester %></td>
+                  <td><a href="mailto:<%= b.email %>"><%= b.email %></a></td>
+                  <td>
+                    <span class="badge bg-info">
+                      <%= b.type_of_use === "Other" && b.type_of_use_other ? b.type_of_use_other : b.type_of_use %>
+                    </span>
+                  </td>
+                  <td><%= formatDate(b.date) %></td>
+                  <td>
+                    <i class="bi bi-clock"></i>
+                    <%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %>
+                  </td>
+                  <td><%= b.participants || "-" %></td>
+                  <td><%= b.supervisors || "-" %></td>
+                  <td>
+                    <% if (b.equipment && b.equipment.length > 0) { %>
+                      <ul class="equipment-list">
+                        <% b.equipment.forEach(eq => { %>
+                          <li><%= eq %></li>
+                        <% }) %>
+                      </ul>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (b.notes) { %>
+                      <span title="<%= b.notes %>">
+                        <%= b.notes.length > 30 ? b.notes.substring(0, 30) + '...' : b.notes %>
+                      </span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td><small><%= formatDate(b.created_at) %></small></td>
+                  <td>
+                    <% if (b.risk_file) { %>
+                      <a href="/download/<%= b.risk_file %>" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-download"></i>
+                      </a>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td><%= b.feedback || "-" %></td>
+                  <td>
+                    <button type="button" class="btn btn-danger btn-sm" 
+                            onclick="confirmDelete(<%= b.id %>, '<%= b.requester %>')">
+                      <i class="bi bi-trash"></i> Delete
+                    </button>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No rejected bookings.
+      </div>
+    <% } %>
+
+    <!-- Deleted Logs -->
+    <div class="section-header mt-4">
+      <h3><i class="bi bi-archive text-secondary"></i> Deleted Booking Logs</h3>
+      <span class="booking-count"><%= deleted.length %></span>
+    </div>
+    
+    <% if (deleted.length > 0) { %>
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-hover table-striped mb-0">
+            <thead class="table-dark sticky-top">
+              <tr>
+                <th>Booking ID</th>
+                <th>Requester</th>
+                <th>Email</th>
+                <th>Type</th>
+                <th>Deleted At</th>
+                <th>Deleted By</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% deleted.forEach(b => { %>
+                <tr>
+                  <td><strong>#<%= b.booking_id %></strong></td>
+                  <td><%= b.requester %></td>
+                  <td><a href="mailto:<%= b.email %>"><%= b.email %></a></td>
+                  <td>
+                    <span class="badge bg-info">
+                      <%= b.type_of_use %>
+                    </span>
+                  </td>
+                  <td><%= formatDate(b.deleted_at) %></td>
+                  <td><%= b.deleted_by %></td>
+                  <td>
+                    <span class="badge bg-secondary">
+                      <%= b.action %>
+                    </span>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No deleted booking logs.
+      </div>
+    <% } %>
+
   </div>
 
-  <% 
-    function formatTime(t) {
-      if (!t) return "";
-      let [h,m] = t.split(":");
-      return `${h.padStart(2,"0")}:${m.padStart(2,"0")}`;
-    }
-    function formatDate(dt) {
-      if (!dt) return "";
-      let d = new Date(dt);
-      return d.toISOString().split("T")[0];
-    }
-  %>
-
-  <!-- PENDING -->
-  <h3>Pending Bookings (<%= pending.length %>)</h3>
-  <div class="table-container">
-    <table class="table table-striped table-bordered align-middle">
-      <thead class="table-dark">
-        <tr>
-          <th>ID</th><th>Requester</th><th>Email</th><th>Type</th><th>Date</th><th>Time</th>
-          <th>Participants</th><th>Supervisors</th><th>Equipment</th><th>Notes</th>
-          <th>Submitted At</th><th>Risk File</th><th>Feedback</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% pending.forEach(b => { %>
-        <tr>
-          <td><%= b.id %></td>
-          <td><%= b.requester %></td>
-          <td><%= b.email %></td>
-          <td><%= b.type_of_use === "Other" && b.type_of_use_other ? b.type_of_use_other : b.type_of_use %></td>
-          <td><%= formatDate(b.date) %></td>
-          <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
-          <td><%= b.participants || "-" %></td>
-          <td><%= b.supervisors || "-" %></td>
-          <td>
-            <% if (b.equipment && b.equipment.length>0) { %>
-              <ul class="mb-0"><% b.equipment.forEach(eq => { %><li><%= eq %></li><% }) %></ul>
-            <% } else { %>-<% } %>
-          </td>
-          <td><%= b.notes || "-" %></td>
-          <td><%= formatDate(b.created_at) %></td>
-          <td>
-            <% if (b.risk_file) { %>
-              <a href="/download/<%= b.risk_file %>">Download</a>
-            <% } else { %>-<% } %>
-          </td>
-          <td>
-            <form method="POST" action="/admin/<%= b.id %>/feedback" class="d-flex">
-              <input type="text" name="feedback" value="<%= b.feedback %>" class="form-control form-control-sm me-1 feedback-input">
-              <button type="submit" class="btn btn-sm btn-primary">Save</button>
-            </form>
-          </td>
-          <td>
-            <form method="POST" action="/admin/<%= b.id %>/approved" class="d-inline">
-              <button type="submit" class="btn btn-success btn-sm mb-1">Approve</button>
-            </form>
-            <form method="POST" action="/admin/<%= b.id %>/rejected" class="d-inline">
-              <button type="submit" class="btn btn-warning btn-sm mb-1">Reject</button>
-            </form>
-            <form method="POST" action="/admin/<%= b.id %>/delete" class="d-inline">
-              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?');">Delete</button>
-            </form>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
+  <!-- Delete Confirmation Modal -->
+  <div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-exclamation-triangle text-warning"></i> Confirm Delete
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this booking?</p>
+          <p class="mb-0"><strong>Booking ID:</strong> <span id="deleteBookingId"></span></p>
+          <p><strong>Requester:</strong> <span id="deleteRequester"></span></p>
+          <div class="alert alert-warning mt-3">
+            <i class="bi bi-info-circle"></i> This action cannot be undone. The booking will be logged in the deletion history.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <form method="POST" id="deleteForm" class="d-inline">
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash"></i> Delete Booking
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
-
-  <!-- APPROVED -->
-  <h3>Approved Bookings (<%= approved.length %>)</h3>
-  <div class="table-container">
-    <table class="table table-striped table-bordered align-middle">
-      <thead class="table-dark">
-        <tr>
-          <th>ID</th><th>Requester</th><th>Email</th><th>Type</th><th>Date</th><th>Time</th>
-          <th>Participants</th><th>Supervisors</th><th>Equipment</th><th>Notes</th>
-          <th>Submitted At</th><th>Risk File</th><th>Feedback</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% approved.forEach(b => { %>
-        <tr>
-          <td><%= b.id %></td>
-          <td><%= b.requester %></td>
-          <td><%= b.email %></td>
-          <td><%= b.type_of_use === "Other" && b.type_of_use_other ? b.type_of_use_other : b.type_of_use %></td>
-          <td><%= formatDate(b.date) %></td>
-          <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
-          <td><%= b.participants || "-" %></td>
-          <td><%= b.supervisors || "-" %></td>
-          <td>
-            <% if (b.equipment && b.equipment.length>0) { %>
-              <ul class="mb-0"><% b.equipment.forEach(eq => { %><li><%= eq %></li><% }) %></ul>
-            <% } else { %>-<% } %>
-          </td>
-          <td><%= b.notes || "-" %></td>
-          <td><%= formatDate(b.created_at) %></td>
-          <td>
-            <% if (b.risk_file) { %>
-              <a href="/download/<%= b.risk_file %>">Download</a>
-            <% } else { %>-<% } %>
-          </td>
-          <td><%= b.feedback || "-" %></td>
-          <td>
-            <form method="POST" action="/admin/<%= b.id %>/rejected" class="d-inline">
-              <button type="submit" class="btn btn-warning btn-sm mb-1">Reject</button>
-            </form>
-            <form method="POST" action="/admin/<%= b.id %>/delete" class="d-inline">
-              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?');">Delete</button>
-            </form>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- REJECTED -->
-  <h3>Rejected Bookings (<%= rejected.length %>)</h3>
-  <div class="table-container">
-    <table class="table table-striped table-bordered align-middle">
-      <thead class="table-dark">
-        <tr>
-          <th>ID</th><th>Requester</th><th>Email</th><th>Type</th><th>Date</th><th>Time</th>
-          <th>Participants</th><th>Supervisors</th><th>Equipment</th><th>Notes</th>
-          <th>Submitted At</th><th>Risk File</th><th>Feedback</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% rejected.forEach(b => { %>
-        <tr>
-          <td><%= b.id %></td>
-          <td><%= b.requester %></td>
-          <td><%= b.email %></td>
-          <td><%= b.type_of_use === "Other" && b.type_of_use_other ? b.type_of_use_other : b.type_of_use %></td>
-          <td><%= formatDate(b.date) %></td>
-          <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
-          <td><%= b.participants || "-" %></td>
-          <td><%= b.supervisors || "-" %></td>
-          <td>
-            <% if (b.equipment && b.equipment.length>0) { %>
-              <ul class="mb-0"><% b.equipment.forEach(eq => { %><li><%= eq %></li><% }) %></ul>
-            <% } else { %>-<% } %>
-          </td>
-          <td><%= b.notes || "-" %></td>
-          <td><%= formatDate(b.created_at) %></td>
-          <td>
-            <% if (b.risk_file) { %>
-              <a href="/download/<%= b.risk_file %>">Download</a>
-            <% } else { %>-<% } %>
-          </td>
-          <td><%= b.feedback || "-" %></td>
-          <td>
-            <form method="POST" action="/admin/<%= b.id %>/delete" class="d-inline">
-              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?');">Delete</button>
-            </form>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- DELETED -->
-  <h3>Deleted Booking Logs (<%= deleted.length %>)</h3>
-  <div class="table-container">
-    <table class="table table-striped table-bordered align-middle">
-      <thead class="table-dark">
-        <tr>
-          <th>Booking ID</th><th>Requester</th><th>Email</th><th>Type</th>
-          <th>Deleted At</th><th>Deleted By</th><th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% deleted.forEach(b => { %>
-        <tr>
-          <td><%= b.booking_id %></td>
-          <td><%= b.requester %></td>
-          <td><%= b.email %></td>
-          <td><%= b.type_of_use %></td>
-          <td><%= formatDate(b.deleted_at) %></td>
-          <td><%= b.deleted_by %></td>
-          <td><%= b.action %></td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-
-</div>
 
 <% } %>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // User Management Functions
+  async function resetUserPassword(userId, username) {
+    if (!confirm(`Are you sure you want to reset the password for user "${username}"?\n\nA temporary password will be generated.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/admin/reset-user-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`Password reset successful!\n\nUsername: ${username}\nTemporary Password: ${result.tempPassword}\n\nPlease save this password and provide it to the user. They should change it after logging in.`);
+      } else {
+        alert('Error: ' + result.message);
+      }
+    } catch (error) {
+      alert('Error resetting password: ' + error.message);
+    }
+  }
+
+  async function deleteUser(userId, username) {
+    if (!confirm(`⚠️ WARNING: Are you sure you want to DELETE user "${username}"?\n\nThis will:\n- Remove the user account permanently\n- Delete all their bookings\n\nThis action CANNOT be undone!`)) {
+      return;
+    }
+
+    // Double confirmation for safety
+    const confirmation = prompt(`Type "${username}" to confirm deletion:`);
+    if (confirmation !== username) {
+      alert('Deletion cancelled. Username did not match.');
+      return;
+    }
+
+    try {
+      const response = await fetch('/admin/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`User "${username}" has been deleted successfully.`);
+        location.reload(); // Refresh the page to update the list
+      } else {
+        alert('Error: ' + result.message);
+      }
+    } catch (error) {
+      alert('Error deleting user: ' + error.message);
+    }
+  }
+
+  // Delete confirmation modal for bookings
+  function confirmDelete(bookingId, requester) {
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    document.getElementById('deleteBookingId').textContent = '#' + bookingId;
+    document.getElementById('deleteRequester').textContent = requester;
+    document.getElementById('deleteForm').action = '/admin/' + bookingId + '/delete';
+    modal.show();
+  }
+
+  // Add loading state to forms
+  document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+      form.addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          const originalText = submitBtn.innerHTML;
+          submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processing...';
+          
+          // Re-enable after 5 seconds in case of error
+          setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+          }, 5000);
+        }
+      });
+    });
+  });
+
+  // Auto-dismiss alerts after 5 seconds
+  document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert-dismissible');
+    alerts.forEach(alert => {
+      setTimeout(() => {
+        const bsAlert = new bootstrap.Alert(alert);
+        bsAlert.close();
+      }, 5000);
+    });
+  });
+</script>
+
 </body>
 </html>

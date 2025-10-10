@@ -2,130 +2,188 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pool Booking Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pool Booking System - Home</title>
   <link rel="stylesheet" href="/styles/main.css">
-  <style>
-    /* Centered logo with hover effect */
-    .home-logo {
-      display: block;
-      margin: 30px auto 20px auto;
-      max-width: 200px;
-      width: 50%;
-      height: auto;
-      border-radius: 12px;        
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .home-logo:hover {
-      transform: scale(1.08);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-    }
-
-    /* Quick guide styling */
-    .quick-guide {
-      background-color: #d4f0f0; /* gentle teal */
-      color: #056d75;
-      padding: 20px 25px;
-      border-radius: 8px;
-      margin-top: 20px;
-      text-align: left;
-      max-width: 650px;
-      margin-left: auto;
-      margin-right: auto;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .quick-guide h5 {
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .quick-guide ul {
-      padding-left: 0;
-      list-style: none;
-      margin-top: 10px;
-    }
-
-    .quick-guide li {
-      margin-bottom: 10px;
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    .quick-guide li::before {
-      content: "✅";
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    .quick-guide .info-icon {
-      font-size: 1.2em;
-      color: #056d75;
-    }
-  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 </head>
 <body>
-  <%- include('partials/navbar') %>
+  <%- include('partials/navbar', { currentPage: currentPage, session: session }) %>
 
-  <div class="container text-center">
-    <img src="/images/logo.jpg" alt="Pool Logo" class="home-logo">
-    <h1>Welcome to the Pool Booking System</h1>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <img src="/images/logo.jpg" alt="Pool Logo" style="max-width: 180px; height: auto; margin: 0 auto 20px; display: block; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);">
+      <h1>Welcome to Pool Booking</h1>
+      <p>Book your pool time with ease. Choose from available time slots & manage your bookings.</p>
+      <div class="hero-buttons">
+        <a href="/form" class="btn-hero btn-hero-primary">
+          <i class="bi bi-calendar-plus"></i>
+          Request a Booking
+        </a>
+        <a href="/calendar" class="btn-hero btn-hero-secondary">
+          <i class="bi bi-calendar-check"></i>
+          View Approved Bookings
+        </a>
+      </div>
+    </div>
+  </section>
 
-   <div class="quick-guide mt-3">
-  <h5><span class="info-icon">ℹ️</span> Quick Guide</h5>
-  <ul>
-    <li>Request a booking for pool use via the 'Request Booking' page.</li>
-    <li>Check all approved bookings on the 'Approved Bookings' page.</li>
-    <li>View or manage your personal bookings on the 'My Bookings' page.</li>
-    <li>Fill all required information carefully to ensure approval.</li>
-  </ul>
-</div>
+  <!-- Quick Guide Section -->
+  <section class="features-section" style="padding-top: 40px;">
+    <div class="container" style="max-width: 800px;">
+      <div style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); padding: 30px; border-radius: 12px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15); border-left: 5px solid var(--primary-purple);">
+        <h3 style="color: #0369a1; display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+          <i class="bi bi-info-circle" style="font-size: 1.5rem;"></i>
+          Quick Guide
+        </h3>
+        <ul style="list-style: none; padding: 0; margin: 0; color: #075985;">
+          <li style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; font-size: 1.05rem;">
+            <i class="bi bi-check-circle-fill" style="color: #10b981; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px;"></i>
+            <span>Request a booking for pool use via the <strong>'Request Booking'</strong> page</span>
+          </li>
+          <li style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; font-size: 1.05rem;">
+            <i class="bi bi-check-circle-fill" style="color: #10b981; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px;"></i>
+            <span>Check all approved bookings on the <strong>'Approved Bookings'</strong> page</span>
+          </li>
+          <li style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; font-size: 1.05rem;">
+            <i class="bi bi-check-circle-fill" style="color: #10b981; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px;"></i>
+            <span>View or manage your personal bookings on the <strong>'My Bookings'</strong> page</span>
+          </li>
+          <li style="display: flex; align-items: flex-start; gap: 12px; font-size: 1.05rem;">
+            <i class="bi bi-check-circle-fill" style="color: #10b981; font-size: 1.3rem; flex-shrink: 0; margin-top: 2px;"></i>
+            <span>Fill all required information carefully to ensure approval</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
 
-<style>
-.quick-guide {
-  background: linear-gradient(135deg, #d0f0f0 0%, #a0e6e6 100%);
-  color: #056d75;
-  padding: 20px 25px;
-  border-radius: 8px;
-  margin-top: 20px;
-  text-align: left;
-  max-width: 650px;
-  margin-left: auto;
-  margin-right: auto;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
+  <!-- Features Section -->
+  <section class="features-section">
+    <h2 class="section-title">Why Choose Our System?</h2>
+    <p class="section-subtitle">Experience seamless pool booking with our modern, user-friendly platform designed for your convenience.</p>
 
-.quick-guide h5 {
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="bi bi-calendar-check"></i>
+        </div>
+        <h3>Easy Booking</h3>
+        <p>Request pool time slots in seconds with our intuitive booking form. Select your preferred date, time, and duration effortlessly.</p>
+      </div>
 
-.quick-guide ul {
-  padding-left: 0;
-  list-style: none;
-  margin-top: 10px;
-}
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="bi bi-clock-history"></i>
+        </div>
+        <h3>Real-Time Availability</h3>
+        <p>View live availability and approved bookings on our interactive calendar. Never double-book or miss an available slot again.</p>
+      </div>
 
-.quick-guide li {
-  margin-bottom: 10px;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="bi bi-bookmark"></i>
+        </div>
+        <h3>Manage Your Bookings</h3>
+        <p>Track all your pool bookings in one place. Edit details, check status, and view your booking history at any time.</p>
+      </div>
 
-.quick-guide li::before {
-  content: "✅";
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-</style>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="bi bi-bell"></i>
+        </div>
+        <h3>Instant Notifications</h3>
+        <p>Get notified when your booking is approved or if any changes occur. Stay informed about your pool sessions.</p>
+      </div>
 
-  </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="bi bi-shield-check"></i>
+        </div>
+        <h3>Secure & Reliable</h3>
+        <p>Your booking data is safe with us. Our system ensures secure handling of all your information and requests.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="bi bi-phone"></i>
+        </div>
+        <h3>Mobile Friendly</h3>
+        <p>Access the booking system from any device. Book on-the-go with our fully responsive mobile design.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <h3><i class="bi bi-people"></i></h3>
+          <p>Active Users</p>
+        </div>
+        <div class="stat-item">
+          <h3><i class="bi bi-calendar-check"></i></h3>
+          <p>Bookings This Month</p>
+        </div>
+        <div class="stat-item">
+          <h3><i class="bi bi-star"></i></h3>
+          <p>User Satisfaction</p>
+        </div>
+        <div class="stat-item">
+          <h3><i class="bi bi-clock"></i></h3>
+          <p>Available Hours</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start Section -->
+  <section class="features-section">
+    <h2 class="section-title">Get Started in 3 Easy Steps</h2>
+    <p class="section-subtitle">Start enjoying the pool in minutes with our streamlined booking process.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <strong>1</strong>
+        </div>
+        <h3>Choose Your Time</h3>
+        <p>Browse available time slots and select the date and time that works best for your user group.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <strong>2</strong>
+        </div>
+        <h3>Submit Request</h3>
+        <p>Fill out the simple booking form with your details and submit your booking request for approval.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <strong>3</strong>
+        </div>
+        <h3>Enjoy Swimming</h3>
+        <p>Once approved, your booking appears on the calendar.</p>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/form" class="btn btn-primary" style="font-size: 1.1rem; padding: 16px 40px;">
+        <i class="bi bi-arrow-right-circle"></i>
+        Get Started Now
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2025 Pool Booking System. All rights reserved.</p>
+      <p style="margin-top: 8px; opacity: 0.7;">Made with <i class="bi bi-heart-fill" style="color: #ef4444;"></i> for swimmers by Duccio</p>
+    </div>
+  </footer>
 </body>
 </html>

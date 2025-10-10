@@ -1,107 +1,498 @@
-<%- include('partials/navbar') %>
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Pool Usage Calendar</title>
-  <link rel="stylesheet" href="/styles/main.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pool Usage Calendar - Pool Booking System</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/styles/main.css">
   <style>
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 5px; border: 1px solid #ccc; white-space: nowrap; }
-    ul { padding-left: 20px; margin: 0; }
+    .calendar-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    .booking-timeline-card {
+      background: white;
+      border: none;
+      border-left: 4px solid #667eea;
+      margin-bottom: 1.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .booking-timeline-card:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .date-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      text-align: center;
+      min-width: 100px;
+    }
+    .date-badge .day {
+      font-size: 2rem;
+      font-weight: bold;
+      line-height: 1;
+    }
+    .date-badge .month {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+    .time-badge {
+      background: #e7f3ff;
+      color: #0066cc;
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .detail-row {
+      display: flex;
+      align-items: start;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+    .detail-label {
+      font-weight: 600;
+      min-width: 150px;
+      color: #6c757d;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .detail-value {
+      flex: 1;
+    }
+    .equipment-tag {
+      display: inline-block;
+      background: #e7f3ff;
+      color: #0066cc;
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.875rem;
+      margin: 0.2rem;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    .empty-state i {
+      font-size: 5rem;
+      color: #dee2e6;
+      margin-bottom: 1.5rem;
+    }
+    .filter-bar {
+      background: white;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .stats-card {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      text-align: center;
+      border: 2px solid #e9ecef;
+    }
+    .stats-card .number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #667eea;
+    }
+    .stats-card .label {
+      color: #6c757d;
+      font-size: 0.875rem;
+    }
+    @media (max-width: 768px) {
+      .date-badge {
+        min-width: 80px;
+      }
+      .detail-label {
+        min-width: 120px;
+        font-size: 0.875rem;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container mt-4">
-    <h1>Pool Usage Calendar (Approved Bookings)</h1>
 
-    <% if (bookings.length > 0) { %>
-      <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
-          <thead class="table-dark">
-            <tr>
-              <th>Date</th>
-              <th>Time</th>
-              <th>Type of Use</th>
-              <th>Booked by</th>
-              <th>Participants</th>
-              <th>Age Range</th>
-              <th>Responsible Name</th>
-              <th>Event Name</th>
-              <th>Equipment / Setup</th>
-              <th>Other Activities / Notes</th>
-              <th>Approved At</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% 
-              function formatTime(t) {
-                if (!t) return "";
-                let d = new Date("1970-01-01T" + t);
-                let hours = d.getHours();
-                let minutes = d.getMinutes().toString().padStart(2, "0");
-                let ampm = hours >= 12 ? "PM" : "AM";
-                hours = hours % 12;
-                hours = hours ? hours : 12;
-                return `${hours}:${minutes} ${ampm}`;
-              }
+<%- include('partials/navbar') %>
 
-              function formatApprovedAt(dt) {
-                if (!dt) return "";
-                let d = new Date(dt);
-                let day = d.getDate().toString().padStart(2,"0");
-                let month = (d.getMonth()+1).toString().padStart(2,"0");
-                let year = d.getFullYear();
-                let hours = d.getHours();
-                let minutes = d.getMinutes().toString().padStart(2,"0");
-                let ampm = hours >= 12 ? "PM" : "AM";
-                hours = hours % 12;
-                hours = hours ? hours : 12;
-                return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
-              }
-            %>
-
-            <% bookings.forEach(b => { %>
-              <tr>
-                <td><%= b.date %></td>
-                <td><%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %></td>
-                <td>
-                  <% if (b.type_of_use === "Other" && b.type_of_use_other) { %>
-                    <%= b.type_of_use_other %>
-                  <% } else { %>
-                    <%= b.type_of_use %>
-                  <% } %>
-                </td>
-                <td><%= b.requester %></td>
-                <td><%= b.participants || "-" %></td>
-                <td><%= b.age_range || "-" %></td>
-                <td><%= b.responsible_name || "-" %></td>
-                <td><%= b.event_name || "-" %></td>
-                <td>
-                  <% if (b.equipment && b.equipment.length > 0) { %>
-                    <ul class="mb-0">
-                      <% b.equipment.forEach(eq => { %>
-                        <li><%= eq %></li>
-                      <% }) %>
-                    </ul>
-                  <% } else { %>
-                    -
-                  <% } %>
-                  <% if (b.pool_config) { %> / <%= b.pool_config %><% } %>
-                </td>
-                <td><%= b.other_activities || "-" %> / <%= b.notes || "-" %></td>
-                <td><%= formatApprovedAt(b.approved_at) %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+<div class="container mt-4 mb-5">
+  <div class="row">
+    <div class="col-12">
+      
+      <!-- Header -->
+      <div class="calendar-header">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+          <div>
+            <h1 class="mb-2">
+              <i class="bi bi-calendar-check-fill"></i> Pool Usage Calendar
+            </h1>
+            <p class="mb-0 opacity-75">
+              View all approved pool bookings and scheduled activities
+            </p>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="/form" class="btn btn-light">
+              <i class="bi bi-plus-circle"></i> New Booking
+            </a>
+            <a href="/my-bookings" class="btn btn-outline-light">
+              <i class="bi bi-list-check"></i> My Bookings
+            </a>
+          </div>
+        </div>
       </div>
-    <% } else { %>
-      <p>No approved bookings yet.</p>
-    <% } %>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+      <% if (bookings.length > 0) { %>
+        
+        <!-- Statistics -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <div class="stats-card">
+              <div class="number"><%= bookings.length %></div>
+              <div class="label">Total Approved Bookings</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stats-card">
+              <div class="number">
+                <%= [...new Set(bookings.map(b => b.date))].length %>
+              </div>
+              <div class="label">Days Booked</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stats-card">
+              <div class="number">
+                <%= [...new Set(bookings.map(b => b.requester))].length %>
+              </div>
+              <div class="label">Unique Requesters</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control" id="searchInput" placeholder="Search bookings...">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select" id="typeFilter">
+                <option value="">All Types</option>
+                <option value="Training">Training</option>
+                <option value="Competition">Competition</option>
+                <option value="Event">Event</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select" id="sortOrder">
+                <option value="date-asc">Date (Earliest First)</option>
+                <option value="date-desc">Date (Latest First)</option>
+                <option value="time-asc">Time (Earliest First)</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                <i class="bi bi-arrow-clockwise"></i> Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bookings Timeline -->
+        <div id="bookingsContainer">
+          <% 
+            function formatTime(t) {
+              if (!t) return "";
+              let d = new Date("1970-01-01T" + t);
+              let hours = d.getHours();
+              let minutes = d.getMinutes().toString().padStart(2, "0");
+              let ampm = hours >= 12 ? "PM" : "AM";
+              hours = hours % 12;
+              hours = hours ? hours : 12;
+              return `${hours}:${minutes} ${ampm}`;
+            }
+
+            function formatApprovedAt(dt) {
+              if (!dt) return "";
+              let d = new Date(dt);
+              let day = d.getDate().toString().padStart(2,"0");
+              let month = (d.getMonth()+1).toString().padStart(2,"0");
+              let year = d.getFullYear();
+              let hours = d.getHours();
+              let minutes = d.getMinutes().toString().padStart(2,"0");
+              let ampm = hours >= 12 ? "PM" : "AM";
+              hours = hours % 12;
+              hours = hours ? hours : 12;
+              return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
+            }
+
+            function formatDate(dateStr) {
+              const d = new Date(dateStr);
+              return {
+                day: d.getDate(),
+                month: d.toLocaleDateString('en-US', { month: 'short' }),
+                year: d.getFullYear(),
+                full: d.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+              };
+            }
+          %>
+
+          <% bookings.forEach(b => { 
+            const dateInfo = formatDate(b.date);
+          %>
+            <div class="card booking-timeline-card" data-type="<%= b.type_of_use %>" data-date="<%= b.date %>">
+              <div class="card-body">
+                <div class="row">
+                  
+                  <!-- Date Badge -->
+                  <div class="col-auto">
+                    <div class="date-badge">
+                      <div class="day"><%= dateInfo.day %></div>
+                      <div class="month"><%= dateInfo.month %></div>
+                      <div class="year" style="font-size: 0.75rem; opacity: 0.8;"><%= dateInfo.year %></div>
+                    </div>
+                  </div>
+
+                  <!-- Booking Details -->
+                  <div class="col">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                      <div>
+                        <h5 class="mb-1">
+                          <% if (b.type_of_use === "Other" && b.type_of_use_other) { %>
+                            <%= b.type_of_use_other %>
+                          <% } else { %>
+                            <%= b.type_of_use %>
+                          <% } %>
+                        </h5>
+                        <div class="time-badge">
+                          <i class="bi bi-clock-fill"></i>
+                          <%= formatTime(b.start_time) %> - <%= formatTime(b.finish_time) %>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <div class="detail-row">
+                          <div class="detail-label">
+                            <i class="bi bi-person-fill text-primary"></i>
+                            Booked by
+                          </div>
+                          <div class="detail-value"><strong><%= b.requester %></strong></div>
+                        </div>
+
+                        <% if (b.participants) { %>
+                          <div class="detail-row">
+                            <div class="detail-label">
+                              <i class="bi bi-people-fill text-primary"></i>
+                              Participants
+                            </div>
+                            <div class="detail-value"><%= b.participants %></div>
+                          </div>
+                        <% } %>
+
+                        <% if (b.supervisors) { %>
+                          <div class="detail-row">
+                            <div class="detail-label">
+                              <i class="bi bi-shield-check text-primary"></i>
+                              Supervisors
+                            </div>
+                            <div class="detail-value"><%= b.supervisors %></div>
+                          </div>
+                        <% } %>
+
+                        <% if (b.age_range) { %>
+                          <div class="detail-row">
+                            <div class="detail-label">
+                              <i class="bi bi-calendar-range text-primary"></i>
+                              Age Range
+                            </div>
+                            <div class="detail-value"><%= b.age_range %></div>
+                          </div>
+                        <% } %>
+
+                        <% if (b.event_name) { %>
+                          <div class="detail-row">
+                            <div class="detail-label">
+                              <i class="bi bi-trophy text-primary"></i>
+                              Event Name
+                            </div>
+                            <div class="detail-value"><%= b.event_name %></div>
+                          </div>
+                        <% } %>
+                      </div>
+
+                      <div class="col-md-6">
+                        <% if (b.equipment && b.equipment.length > 0) { %>
+                          <div class="detail-row">
+                            <div class="detail-label">
+                              <i class="bi bi-box-seam text-primary"></i>
+                              Equipment
+                            </div>
+                            <div class="detail-value">
+                              <% b.equipment.forEach(eq => { %>
+                                <span class="equipment-tag">
+                                  <i class="bi bi-check2"></i> <%= eq %>
+                                </span>
+                              <% }) %>
+                            </div>
+                          </div>
+                        <% } %>
+
+                        <% if (b.pool_config) { %>
+                          <div class="detail-row">
+                            <div class="detail-label">
+                              <i class="bi bi-grid-3x3 text-primary"></i>
+                              Pool Setup
+                            </div>
+                            <div class="detail-value"><%= b.pool_config %></div>
+                          </div>
+                        <% } %>
+
+                        <% if (b.notes) { %>
+                          <div class="detail-row">
+                            <div class="detail-label">
+                              <i class="bi bi-journal-text text-primary"></i>
+                              Notes
+                            </div>
+                            <div class="detail-value"><%= b.notes %></div>
+                          </div>
+                        <% } %>
+
+                        <% if (b.other_activities) { %>
+                          <div class="detail-row">
+                            <div class="detail-label">
+                              <i class="bi bi-list-check text-primary"></i>
+                              Other Activities
+                            </div>
+                            <div class="detail-value"><%= b.other_activities %></div>
+                          </div>
+                        <% } %>
+
+                        <div class="detail-row">
+                          <div class="detail-label">
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                            Approved
+                          </div>
+                          <div class="detail-value">
+                            <small class="text-muted"><%= formatApprovedAt(b.approved_at) %></small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+
+      <% } else { %>
+        
+        <!-- Empty State -->
+        <div class="card">
+          <div class="card-body">
+            <div class="empty-state">
+              <i class="bi bi-calendar-x"></i>
+              <h4>No Approved Bookings Yet</h4>
+              <p class="text-muted mb-4">
+                There are currently no approved bookings in the calendar.<br>
+                Be the first to book the pool!
+              </p>
+              <a href="/form" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create New Booking
+              </a>
+            </div>
+          </div>
+        </div>
+
+      <% } %>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Filter and Search Functionality
+  const searchInput = document.getElementById('searchInput');
+  const typeFilter = document.getElementById('typeFilter');
+  const sortOrder = document.getElementById('sortOrder');
+  const bookingsContainer = document.getElementById('bookingsContainer');
+
+  function filterBookings() {
+    const searchTerm = searchInput?.value.toLowerCase() || '';
+    const typeValue = typeFilter?.value || '';
+    const cards = bookingsContainer?.querySelectorAll('.booking-timeline-card') || [];
+
+    cards.forEach(card => {
+      const cardText = card.textContent.toLowerCase();
+      const cardType = card.dataset.type;
+      
+      const matchesSearch = cardText.includes(searchTerm);
+      const matchesType = !typeValue || cardType === typeValue;
+
+      if (matchesSearch && matchesType) {
+        card.style.display = '';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  function sortBookings() {
+    const cards = Array.from(bookingsContainer?.querySelectorAll('.booking-timeline-card') || []);
+    const order = sortOrder?.value || 'date-asc';
+
+    cards.sort((a, b) => {
+      const dateA = new Date(a.dataset.date);
+      const dateB = new Date(b.dataset.date);
+
+      if (order === 'date-desc') {
+        return dateB - dateA;
+      } else {
+        return dateA - dateB;
+      }
+    });
+
+    cards.forEach(card => bookingsContainer?.appendChild(card));
+  }
+
+  function resetFilters() {
+    if (searchInput) searchInput.value = '';
+    if (typeFilter) typeFilter.value = '';
+    if (sortOrder) sortOrder.value = 'date-asc';
+    filterBookings();
+    sortBookings();
+  }
+
+  // Event Listeners
+  searchInput?.addEventListener('input', filterBookings);
+  typeFilter?.addEventListener('change', filterBookings);
+  sortOrder?.addEventListener('change', sortBookings);
+</script>
+
 </body>
 </html>
