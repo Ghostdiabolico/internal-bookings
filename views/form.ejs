@@ -95,32 +95,9 @@
             <div class="flex-grow-1">
               <h4 class="alert-heading">Booking Successfully Submitted!</h4>
               <p class="mb-2">Your booking request has been received and is pending approval.</p>
-              <hr>
-              <div class="bg-white p-3 rounded">
-                <p class="mb-2"><strong>Important: Save this information to manage your booking:</strong></p>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="text-muted small">Your Email:</label>
-                    <div class="input-group">
-                      <input type="text" class="form-control" value="<%= email || '' %>" readonly id="emailCopy">
-                      <button class="btn btn-outline-secondary" onclick="copyToClipboard('emailCopy', this)">
-                        <i class="bi bi-clipboard"></i> Copy
-                      </button>
-                    </div>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="text-muted small">Access Code:</label>
-                    <div class="input-group">
-                      <input type="text" class="form-control fw-bold" value="<%= accessCode %>" readonly id="codeCopy">
-                      <button class="btn btn-outline-secondary" onclick="copyToClipboard('codeCopy', this)">
-                        <i class="bi bi-clipboard"></i> Copy
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <p class="mb-0">You can view and manage all your bookings from your account.</p>
               <div class="mt-3 d-flex gap-2">
-                <a href="/my-bookings?email=<%= encodeURIComponent(email || '') %>&code=<%= accessCode %>" class="btn btn-primary">
+                <a href="/my-bookings" class="btn btn-primary">
                   <i class="bi bi-eye"></i> View My Bookings
                 </a>
                 <a href="/form" class="btn btn-outline-primary">
@@ -142,15 +119,16 @@
               <label for="requester" class="form-label">
                 Requester Name <span class="required-star">*</span>
               </label>
-              <input type="text" class="form-control" id="requester" name="requester" required>
+              <input type="text" class="form-control" id="requester" name="requester" 
+                     value="<%= requester || '' %>" required>
             </div>
             <div class="col-md-6">
               <label for="email" class="form-label">
                 Email Address <span class="required-star">*</span>
               </label>
-              <input type="email" class="form-control" id="email" name="email" required 
-                     placeholder="example@email.com">
-              <div class="form-text">You'll receive your access code at this email</div>
+              <input type="email" class="form-control" id="email" name="email" 
+                     value="<%= email || '' %>" required placeholder="example@email.com">
+              <div class="form-text">Contact email for this booking</div>
             </div>
             <div class="col-md-6">
               <label for="responsible_name" class="form-label">Responsible Person Name</label>
@@ -424,24 +402,6 @@
     otherField.disabled = !this.checked;
     if (!this.checked) otherField.value = '';
   });
-
-  // Copy to clipboard function
-  function copyToClipboard(elementId, button) {
-    const element = document.getElementById(elementId);
-    element.select();
-    document.execCommand('copy');
-    
-    const originalHTML = button.innerHTML;
-    button.innerHTML = '<i class="bi bi-check"></i> Copied!';
-    button.classList.add('btn-success');
-    button.classList.remove('btn-outline-secondary');
-    
-    setTimeout(() => {
-      button.innerHTML = originalHTML;
-      button.classList.remove('btn-success');
-      button.classList.add('btn-outline-secondary');
-    }, 2000);
-  }
 
   // Form validation enhancement
   document.getElementById('bookingForm').addEventListener('submit', function(e) {
