@@ -2,9 +2,15 @@ import express from "express";
 import path from "path";
 import multer from "multer";
 import crypto from "crypto";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { pool } from "../db.js";
 import { supabase, bucketName } from "../supabase.js";
+import { 
+  sendRegistrationConfirmation, 
+  sendBookingSubmitted, 
+  sendBookingApproved, 
+  sendBookingRejected 
+} from '../utils/mailjetService.js';
 
 const router = express.Router();
 
@@ -54,7 +60,7 @@ router.get("/register", (req, res) => {
 
 router.post("/register", async (req, res) => {
   try {
-    const { username, password, confirm_password, full_name } = req.body;
+    const { username, password, confirm_password, full_name, email } = req.body;
 
     // Validation
     if (!username || !password) {
@@ -107,11 +113,28 @@ router.post("/register", async (req, res) => {
     const recoveryCode = generateRecoveryCode();
 
     // Insert user
-    await pool.query(
+    const result = await pool.query(
       `INSERT INTO users (username, password_hash, full_name, recovery_code)
-       VALUES ($1, $2, $3, $4)`,
+       VALUES ($1, $2, $3, $4) RETURNING id`,
       [username, passwordHash, full_name || null, recoveryCode]
     );
+
+    const userId = result.rows[0].id;
+
+    // Send registration confirmation email
+    try {
+      await sendRegistrationConfirmation({
+        id: userId,
+        username,
+        full_name,
+        recovery_code: recoveryCode,
+        email: email || `${username}@example.com`
+      });
+      console.log('✅ Registration email sent');
+    } catch (emailError) {
+      console.error('⚠️ Registration email failed:', emailError);
+      // Don't fail registration if email fails
+    }
 
     // Show recovery code page
     res.render("register", { 
@@ -382,12 +405,13 @@ router.post("/form", requireAuth, upload.single("risk_file"), async (req, res) =
     const accessCode = crypto.randomBytes(3).toString("hex");
 
     // Insert booking linked to user
-    await pool.query(
+    const result = await pool.query(
       `INSERT INTO pool_bookings
        (user_id, requester, email, type_of_use, type_of_use_other, participants, supervisors, date, start_time, finish_time, 
         risk_file, equipment, equipment_other, notes, status, feedback, access_code, responsible_name, phone, age_range, 
         event_name, pool_config, other_activities, hiring_party)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', $15, $16, $17, $18, $19, $20, $21, $22)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', '', $15, $16, $17, $18, $19, $20, $21, $22)
+       RETURNING *`,
       [
         req.session.userId,
         requester,
@@ -413,6 +437,17 @@ router.post("/form", requireAuth, upload.single("risk_file"), async (req, res) =
         hiring_party || null
       ]
     );
+
+    const newBooking = result.rows[0];
+
+    // Send booking submission confirmation email
+    try {
+      await sendBookingSubmitted(newBooking);
+      console.log('✅ Booking submission email sent');
+    } catch (emailError) {
+      console.error('⚠️ Booking submission email failed:', emailError);
+      // Don't fail booking if email fails
+    }
 
     res.redirect("/form?submitted=1&code=" + accessCode + "&email=" + encodeURIComponent(email));
   } catch (err) {
@@ -688,7 +723,7 @@ router.post("/admin/reset-user-password", requireAdmin, async (req, res) => {
     const { userId } = req.body;
 
     // Generate a temporary password (8 characters, easy to type)
-    const tempPassword = crypto.randomBytes(4).toString('hex'); // e.g., "a3f8b2c9"
+    const tempPassword = crypto.randomBytes(4).toString('hex');
 
     // Hash the temporary password
     const saltRounds = 10;
@@ -741,6 +776,54 @@ router.post("/admin/delete-user", requireAdmin, async (req, res) => {
 });
 
 // -------------------
+// Check for Booking Conflicts (API endpoint)
+// -------------------
+router.post("/api/check-conflicts", async (req, res) => {
+  try {
+    const { date, start_time, finish_time, booking_id } = req.body;
+
+    if (!date || !start_time || !finish_time) {
+      return res.json({ conflicts: [] });
+    }
+
+    let query = `
+      SELECT id, requester, type_of_use, start_time, finish_time, status
+      FROM pool_bookings
+      WHERE date = $1
+        AND status IN ('approved', 'pending')
+        AND (
+          (start_time <= $2 AND finish_time > $2) OR
+          (start_time < $3 AND finish_time >= $3) OR
+          (start_time >= $2 AND finish_time <= $3)
+        )
+    `;
+    
+    const params = [date, start_time, finish_time];
+    
+    if (booking_id) {
+      query += ` AND id != $4`;
+      params.push(booking_id);
+    }
+
+    const result = await pool.query(query, params);
+
+    const conflicts = result.rows.map(booking => ({
+      id: booking.id,
+      requester: booking.requester,
+      type: booking.type_of_use,
+      startTime: booking.start_time.slice(0, 5),
+      finishTime: booking.finish_time.slice(0, 5),
+      status: booking.status
+    }));
+
+    res.json({ conflicts });
+  } catch (err) {
+    console.error("[ERROR] Check conflicts:", err);
+    res.status(500).json({ error: "Failed to check conflicts" });
+  }
+});
+
+// -------------------
 // Admin Delete Booking
 // -------------------
 router.post("/admin/:id/delete", requireAdmin, async (req, res) => {
@@ -782,7 +865,7 @@ router.post("/admin/:id/feedback", requireAdmin, async (req, res) => {
 });
 
 // -------------------
-// Admin Approve / Reject
+// Admin Approve / Reject (WITH EMAIL NOTIFICATIONS)
 // -------------------
 router.post("/admin/:id/:action", requireAdmin, async (req, res) => {
   const { id, action } = req.params;
@@ -792,11 +875,39 @@ router.post("/admin/:id/:action", requireAdmin, async (req, res) => {
   }
 
   try {
+    // Get booking details first
+    const bookingRes = await pool.query(
+      "SELECT * FROM pool_bookings WHERE id = $1",
+      [id]
+    );
+    
+    if (bookingRes.rows.length === 0) {
+      return res.status(404).send("Booking not found");
+    }
+    
+    const booking = bookingRes.rows[0];
+    
+    // Update booking status
     const approved_at = action === "approved" ? new Date().toISOString() : null;
     await pool.query(
       "UPDATE pool_bookings SET status=$1, approved_at=$2 WHERE id=$3", 
       [action, approved_at, id]
     );
+    
+    // Send email notification
+    try {
+      if (action === "approved") {
+        await sendBookingApproved(booking);
+        console.log('✅ Approval email sent');
+      } else if (action === "rejected") {
+        await sendBookingRejected(booking);
+        console.log('✅ Rejection email sent');
+      }
+    } catch (emailError) {
+      console.error("⚠️ Email notification failed:", emailError);
+      // Don't fail the request if email fails - booking status is already updated
+    }
+    
     res.redirect("/admin");
   } catch (err) {
     console.error("[ERROR POST /admin/:id/:action]", err);
