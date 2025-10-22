@@ -9,7 +9,8 @@ import {
   sendRegistrationConfirmation, 
   sendBookingSubmitted, 
   sendBookingApproved, 
-  sendBookingRejected 
+  sendBookingRejected,
+   sendAdminBookingNotification 
 } from '../utils/mailjetService.js';
 
 const router = express.Router();
@@ -441,11 +442,31 @@ router.post("/form", requireAuth, upload.single("risk_file"), async (req, res) =
     const newBooking = result.rows[0];
 
     // Send booking submission confirmation email
+ // Send booking submission confirmation email to user
     try {
       await sendBookingSubmitted(newBooking);
-      console.log('✅ Booking submission email sent');
+      console.log('✅ Booking submission email sent to user');
     } catch (emailError) {
       console.error('⚠️ Booking submission email failed:', emailError);
+      // Don't fail booking if email fails
+    }
+
+    // Send notification to admin(s)
+    try {
+      const adminEmails = process.env.ADMIN_EMAIL ? 
+        process.env.ADMIN_EMAIL.split(',').map(email => email.trim()) : 
+        [];
+      
+      if (adminEmails.length > 0) {
+        for (const adminEmail of adminEmails) {
+          await sendAdminBookingNotification(newBooking, adminEmail);
+        }
+        console.log(`✅ Admin notification sent to ${adminEmails.length} admin(s)`);
+      } else {
+        console.warn('⚠️ No admin email configured in ADMIN_EMAIL environment variable');
+      }
+    } catch (emailError) {
+      console.error('⚠️ Admin notification failed:', emailError);
       // Don't fail booking if email fails
     }
 
@@ -590,6 +611,7 @@ router.post("/edit-booking/:id", requireAuth, upload.single("risk_file"), async 
     if (equipment_other) finalEquipment.push(equipment_other);
 
     // Update booking and reset status to pending
+   // Update booking and reset status to pending
     await pool.query(
       `UPDATE pool_bookings
        SET requester=$1, email=$2, type_of_use=$3, type_of_use_other=$4, participants=$5, supervisors=$6, 
@@ -597,7 +619,8 @@ router.post("/edit-booking/:id", requireAuth, upload.single("risk_file"), async 
            equipment=$11, equipment_other=$12, notes=$13, status='pending', feedback='',
            responsible_name=$14, phone=$15, age_range=$16, event_name=$17, pool_config=$18, 
            other_activities=$19, hiring_party=$20
-       WHERE id=$21 AND user_id=$22`,
+       WHERE id=$21 AND user_id=$22
+       RETURNING *`,
       [
         requester, 
         email, 
@@ -623,6 +646,37 @@ router.post("/edit-booking/:id", requireAuth, upload.single("risk_file"), async 
         req.session.userId
       ]
     );
+
+    // Get the updated booking data
+    const updatedBookingRes = await pool.query(
+      "SELECT * FROM pool_bookings WHERE id=$1",
+      [id]
+    );
+    const updatedBooking = updatedBookingRes.rows[0];
+
+    // Send notification to user about resubmission
+    try {
+      await sendBookingSubmitted(updatedBooking);
+      console.log('✅ Resubmission email sent to user');
+    } catch (emailError) {
+      console.error('⚠️ Resubmission email failed:', emailError);
+    }
+
+    // Send notification to admin(s) about resubmission
+    try {
+      const adminEmails = process.env.ADMIN_EMAIL ? 
+        process.env.ADMIN_EMAIL.split(',').map(email => email.trim()) : 
+        [];
+      
+      if (adminEmails.length > 0) {
+        for (const adminEmail of adminEmails) {
+          await sendAdminBookingNotification(updatedBooking, adminEmail);
+        }
+        console.log(`✅ Admin notification sent to ${adminEmails.length} admin(s) for resubmission`);
+      }
+    } catch (emailError) {
+      console.error('⚠️ Admin notification for resubmission failed:', emailError);
+    }
 
     res.redirect("/my-bookings");
   } catch (err) {

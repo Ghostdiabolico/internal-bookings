@@ -659,3 +659,117 @@ Pymble Ladies College`;
 
   return await sendEmail(booking.email, subject, html, text);
 }
+// 7. Admin Notification - New Booking Submitted
+export async function sendAdminBookingNotification(booking, adminEmail) {
+  const formattedDate = formatDate(booking.date);
+  const subject = `New Pool Booking Request - ${booking.requester} - ${formattedDate}`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>${emailStyles}</head>
+    <body>
+      <div class="container">
+        <div class="header" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);">
+          <h1>New Booking Request</h1>
+          <p style="margin: 0; font-size: 18px;">A new pool booking requires your approval</p>
+        </div>
+        <div class="content">
+          <p>Dear Admin,</p>
+          <p>A new pool booking request has been submitted and is <span class="pending-badge">PENDING APPROVAL</span></p>
+          
+          <div class="booking-details">
+            <h2 style="color: #ff9800; margin-top: 0;">Booking Details</h2>
+            <div class="detail-row">
+              <div class="detail-label">Booking ID:</div>
+              <div class="detail-value"><strong>#${booking.id}</strong></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Requester:</div>
+              <div class="detail-value"><strong>${booking.requester}</strong></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Email:</div>
+              <div class="detail-value">${booking.email}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Date:</div>
+              <div class="detail-value">${formattedDate}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Time:</div>
+              <div class="detail-value">${formatTime(booking.start_time)} - ${formatTime(booking.finish_time)}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Type:</div>
+              <div class="detail-value">${booking.type_of_use}</div>
+            </div>
+            ${booking.event_name ? `
+            <div class="detail-row">
+              <div class="detail-label">Event:</div>
+              <div class="detail-value">${booking.event_name}</div>
+            </div>
+            ` : ''}
+            ${booking.participants ? `
+            <div class="detail-row">
+              <div class="detail-label">Participants:</div>
+              <div class="detail-value">${booking.participants}</div>
+            </div>
+            ` : ''}
+            ${booking.description ? `
+            <div class="detail-row">
+              <div class="detail-label">Description:</div>
+              <div class="detail-value">${booking.description}</div>
+            </div>
+            ` : ''}
+            ${booking.risk_file ? `
+            <div class="detail-row">
+              <div class="detail-label">Risk Assessment:</div>
+              <div class="detail-value">Uploaded ✓</div>
+            </div>
+            ` : ''}
+          </div>
+          
+          <div class="important-notice">
+            <strong>Action Required:</strong>
+            <p style="margin: 10px 0 0 0;">Please review this booking request and either approve or reject it. The requester is waiting for your response.</p>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.APP_URL}/admin/bookings" class="action-button" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">Review & Approve Booking</a>
+          </div>
+          
+          <p>You can manage this booking from the admin dashboard.</p>
+          
+          <p>Best regards,<br><strong>Pool Booking System</strong></p>
+        </div>
+        ${emailFooter}
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `NEW POOL BOOKING REQUEST
+
+A new pool booking requires your approval.
+
+Booking Details:
+- Booking ID: #${booking.id}
+- Requester: ${booking.requester}
+- Email: ${booking.email}
+- Date: ${formattedDate}
+- Time: ${formatTime(booking.start_time)} - ${formatTime(booking.finish_time)}
+- Type: ${booking.type_of_use}
+${booking.event_name ? `- Event: ${booking.event_name}` : ''}
+${booking.participants ? `- Participants: ${booking.participants}` : ''}
+
+Action Required: Please review and approve/reject this booking.
+
+Review booking: ${process.env.APP_URL}/admin/bookings
+
+Best regards,
+Pool Booking System
+Pymble Ladies College`;
+
+  return await sendEmail(adminEmail, subject, html, text);
+}
