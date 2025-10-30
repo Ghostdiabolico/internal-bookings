@@ -12,6 +12,7 @@ import {
   sendBookingRejected,
    sendAdminBookingNotification 
 } from '../utils/mailjetService.js';
+import { checkBookingConflicts, formatConflictMessage } from '../utils/conflictChecker.js';
 
 const router = express.Router();
 
@@ -357,7 +358,8 @@ router.get("/form", requireAuth, (req, res) => {
     email,
     requester,
     session: req.session,
-    currentPage: 'form'
+    currentPage: 'form',
+    error: null
   });
 });
 
@@ -389,6 +391,24 @@ router.post("/form", requireAuth, upload.single("risk_file"), async (req, res) =
     } = req.body;
 
     if (!date) return res.status(400).send("Date is required");
+
+     // CHECK FOR CONFLICTS BEFORE CREATING BOOKING
+    const conflicts = await checkBookingConflicts(date, start_time, finish_time);
+    
+    if (conflicts.length > 0) {
+      const conflictMessage = formatConflictMessage(conflicts);
+      
+      return res.render("form", { 
+        submitted: false,
+        accessCode: null,
+        email: email || "",
+        requester: requester || req.session.fullName || req.session.username || "",
+        session: req.session,
+        currentPage: 'form',
+        error: conflictMessage
+      });
+    }
+    // END CONFLICT CHECK
 
     let risk_file = null;
     if (req.file) {
@@ -551,8 +571,10 @@ router.get("/edit-booking/:id", requireAuth, async (req, res) => {
     res.render("edit-booking", { 
       booking, 
       session: req.session,
-      currentPage: 'my-bookings'
+      currentPage: 'my-bookings',
+      error: null  // ADD THIS LINE
     });
+
   } catch (err) {
     console.error("[ERROR GET /edit-booking/:id]", err);
     res.status(500).send("Error loading edit form");
@@ -596,6 +618,21 @@ router.post("/edit-booking/:id", requireAuth, upload.single("risk_file"), async 
       return res.status(403).send("Unauthorized");
     }
 
+    // CHECK FOR CONFLICTS (exclude current booking ID)
+    const conflicts = await checkBookingConflicts(date, start_time, finish_time, id);
+    
+    if (conflicts.length > 0) {
+      const conflictMessage = formatConflictMessage(conflicts);
+      
+      return res.render("edit-booking", {
+        booking: checkRes.rows[0],
+        session: req.session,
+        currentPage: 'my-bookings',
+        error: conflictMessage
+      });
+    }
+    // END CONFLICT CHECK
+
     // Handle new file upload
     let newRiskFile = null;
     if (req.file) {
@@ -611,7 +648,6 @@ router.post("/edit-booking/:id", requireAuth, upload.single("risk_file"), async 
     if (equipment_other) finalEquipment.push(equipment_other);
 
     // Update booking and reset status to pending
-   // Update booking and reset status to pending
     await pool.query(
       `UPDATE pool_bookings
        SET requester=$1, email=$2, type_of_use=$3, type_of_use_other=$4, participants=$5, supervisors=$6, 

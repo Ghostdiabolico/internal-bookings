@@ -109,6 +109,27 @@
         </div>
       <% } %>
 
+      <!-- ADD THIS ERROR DISPLAY -->
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+          <div class="d-flex align-items-start">
+            <i class="bi bi-exclamation-triangle-fill fs-1 text-danger me-3"></i>
+            <div class="flex-grow-1">
+              <h4 class="alert-heading">Cannot Submit Booking</h4>
+              <div style="white-space: pre-line;"><%= error %></div>
+              <hr>
+              <p class="mb-0">
+                <strong>Tip:</strong> Try checking the 
+                <a href="/calendar" class="alert-link">calendar</a> 
+                to find available time slots.
+              </p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      <% } %>
+
+
       <form method="POST" action="/form" enctype="multipart/form-data" id="bookingForm">
         
         <!-- Contact Information Section -->
