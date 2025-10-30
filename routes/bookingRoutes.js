@@ -997,4 +997,57 @@ router.get("/download/:filename", async (req, res) => {
   }
 });
 
+// -------------------
+// Test Reminder System (Admin only)
+// -------------------
+import { sendRemindersNow, previewTomorrowReminders } from '../utils/reminderScheduler.js';
+
+router.get("/admin/test-reminders", requireAdmin, async (req, res) => {
+  try {
+    await sendRemindersNow();
+    res.send(`
+      <h1>✅ Reminders Sent!</h1>
+      <p>Check your terminal/logs to see the results.</p>
+      <p><a href="/admin">Back to Admin</a></p>
+    `);
+  } catch (error) {
+    res.status(500).send(`Error: ${error.message}`);
+  }
+});
+
+router.get("/admin/preview-reminders", requireAdmin, async (req, res) => {
+  try {
+    const bookings = await previewTomorrowReminders();
+    
+    let html = '<h1>📋 Preview: Tomorrow\'s Booking Reminders</h1>';
+    html += '<p>These bookings will receive reminders:</p>';
+    
+    if (bookings.length === 0) {
+      html += '<p><strong>No bookings scheduled for tomorrow</strong></p>';
+    } else {
+      html += '<table border="1" cellpadding="10" style="border-collapse: collapse;">';
+      html += '<tr><th>ID</th><th>Requester</th><th>Email</th><th>Time</th><th>Reminder Sent?</th></tr>';
+      
+      bookings.forEach(b => {
+        const status = b.reminder_sent ? '✅ Yes' : '📧 No (will send)';
+        html += `<tr>
+          <td>#${b.id}</td>
+          <td>${b.requester}</td>
+          <td>${b.email}</td>
+          <td>${b.start_time.slice(0,5)} - ${b.finish_time.slice(0,5)}</td>
+          <td>${status}</td>
+        </tr>`;
+      });
+      
+      html += '</table>';
+    }
+    
+    html += '<br><p><a href="/admin">Back to Admin</a> | <a href="/admin/test-reminders">Send Reminders Now</a></p>';
+    
+    res.send(html);
+  } catch (error) {
+    res.status(500).send(`Error: ${error.message}`);
+  }
+});
+
 export default router;
