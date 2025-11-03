@@ -124,6 +124,15 @@
         font-size: 0.875rem;
       }
     }
+    .booking-past {
+      opacity: 0.7;
+    }
+    .booking-past .date-badge {
+      background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    }
+    .booking-past .card-body {
+      background: #f8f9fa;
+    }
   </style>
 </head>
 <body>
@@ -134,7 +143,7 @@
   <div class="row">
     <div class="col-12">
       
-      <!-- Header -->
+     <!-- Header -->
       <div class="calendar-header">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
           <div>
@@ -142,10 +151,23 @@
               <i class="bi bi-calendar-check-fill"></i> Pool Usage Calendar
             </h1>
             <p class="mb-0 opacity-75">
-              View all approved pool bookings and scheduled activities
+              <% if (showPast) { %>
+                Viewing all approved bookings (including past)
+              <% } else { %>
+                Viewing upcoming approved bookings (today and future)
+              <% } %>
             </p>
           </div>
           <div class="d-flex gap-2">
+            <% if (showPast) { %>
+              <a href="/calendar" class="btn btn-light">
+                <i class="bi bi-calendar-event"></i> Show Upcoming Only
+              </a>
+            <% } else if (pastCount > 0) { %>
+              <a href="/calendar?showPast=true" class="btn btn-light">
+                <i class="bi bi-calendar3"></i> Show All (<%= pastCount %> past)
+              </a>
+            <% } %>
             <a href="/form" class="btn btn-light">
               <i class="bi bi-plus-circle"></i> New Booking
             </a>
@@ -258,10 +280,11 @@
             }
           %>
 
-          <% bookings.forEach(b => { 
-            const dateInfo = formatDate(b.date);
-          %>
-            <div class="card booking-timeline-card" data-type="<%= b.type_of_use %>" data-date="<%= b.date %>">
+         <% bookings.forEach(b => { 
+  const dateInfo = formatDate(b.date);
+  const isPast = new Date(b.date) < new Date().setHours(0,0,0,0);
+%>
+  <div class="card booking-timeline-card <%= isPast ? 'booking-past' : '' %>" data-type="<%= b.type_of_use %>" data-date="<%= b.date %>">
               <div class="card-body">
                 <div class="row">
                   
@@ -411,16 +434,27 @@
 
       <% } else { %>
         
-        <!-- Empty State -->
+      <!-- Empty State -->
         <div class="card">
           <div class="card-body">
             <div class="empty-state">
               <i class="bi bi-calendar-x"></i>
-              <h4>No Approved Bookings Yet</h4>
-              <p class="text-muted mb-4">
-                There are currently no approved bookings in the calendar.<br>
-                Be the first to book the pool!
-              </p>
+              <% if (showPast) { %>
+                <h4>No Approved Bookings Found</h4>
+                <p class="text-muted mb-4">
+                  There are no approved bookings in the system yet.
+                </p>
+              <% } else { %>
+                <h4>No Upcoming Bookings</h4>
+                <p class="text-muted mb-4">
+                  There are no upcoming approved bookings.<br>
+                  <% if (pastCount > 0) { %>
+                    <a href="/calendar?showPast=true">View <%= pastCount %> past booking<%= pastCount !== 1 ? 's' : '' %></a>
+                  <% } else { %>
+                    Be the first to book the pool!
+                  <% } %>
+                </p>
+              <% } %>
               <a href="/form" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Create New Booking
               </a>

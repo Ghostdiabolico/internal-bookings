@@ -502,11 +502,38 @@ router.post("/form", requireAuth, upload.single("risk_file"), async (req, res) =
 // -------------------
 router.get("/calendar", async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM pool_bookings WHERE status='approved' ORDER BY date,start_time"
+    const showPast = req.query.showPast === 'true';
+    
+    let query;
+    if (showPast) {
+      // Show all approved bookings (including past)
+      query = `SELECT * FROM pool_bookings 
+               WHERE status='approved' 
+               ORDER BY date DESC, start_time DESC`;
+    } else {
+      // Show only upcoming bookings (today and future)
+      query = `SELECT * FROM pool_bookings 
+               WHERE status='approved' 
+               AND date >= CURRENT_DATE
+               ORDER BY date ASC, start_time ASC`;
+    }
+    
+    const result = await pool.query(query);
+    
+    // Get count of past bookings for the toggle button
+    const pastCountRes = await pool.query(
+      `SELECT COUNT(*) as count FROM pool_bookings 
+       WHERE status='approved' 
+       AND date < CURRENT_DATE`
     );
+    const pastCount = parseInt(pastCountRes.rows[0].count) || 0;
+    
+    console.log(`📅 Calendar: Showing ${showPast ? 'all' : 'upcoming'} bookings (${result.rows.length} found, ${pastCount} past)`);
+    
     res.render("calendar", { 
-      bookings: result.rows, 
+      bookings: result.rows,
+      showPast: showPast,
+      pastCount: pastCount,
       session: req.session,
       currentPage: 'calendar'
     });
